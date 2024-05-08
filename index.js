@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+const punycode = require('punycode');
+
 const {
   Bot,
   GrammyError,
@@ -14,6 +16,18 @@ const bot = new Bot(process.env.BOT_API_TOKEN);
 bot.use(hydrate());
 
 const adminId = 661659768;
+
+// Check if user is Admin
+
+bot.use(async (ctx, next) => {
+  if (ctx.from.id === adminId) {
+    ctx.isAdmin = true;
+  }
+  await next();
+});
+
+//
+
 
 const courses = [];
 
@@ -40,19 +54,13 @@ bot.api.setMyCommands([
   },
 ]);
 
-function once(bot, event, callback) {
-  const listener = bot.on(event, async (ctx) => {
-    callback(ctx);
-    bot.off(event, listener);
-  });
-}
 
 // start
 bot.command("start", async (ctx) => {
   await ctx.react("❤");
 
   if (ctx.isAdmin) {
-    await ctx.reply("Welcome, admin! Use the Admin menu to manage content", {
+    await ctx.reply("Вы - Админ, используйте админское меню, чтобы взаимодействовать с курсами и новостями", {
       reply_markup: adminMenuKeyboard,
     });
   } else {
@@ -97,12 +105,6 @@ const adminMenuKeyboard = new InlineKeyboard()
   .text("📑 Разослать новость", "send_news");
 
 // Check if the user is an admin
-bot.use(async (ctx, next) => {
-  if (ctx.from.id === adminId) {
-    ctx.isAdmin = true;
-  }
-  await next();
-});
 
 //
 
@@ -145,7 +147,7 @@ bot.command("panel", async (ctx) => {
     .resized();
 
   await ctx.reply(
-    "👀 Привет! Я American Corner Bot \nЯ помогу тебе найти нужную информацию о ближайших курсах и новостях с уголка 👇",
+    "👀 Привет! Я American Corner Bot 🇺🇸\n📁 Я помогу тебе найти нужную информацию о ближайших курсах и новостях с уголка\nНажми на кнопку меню, чтобы продолжить взаимодействие с ботом 👇",
     {
       reply_markup: panelKeyboard,
     }
@@ -161,7 +163,7 @@ const menuKeyboard = new InlineKeyboard()
 const backKeyboard = new InlineKeyboard().text(" ⬅ Назад в меню", "back");
 
 bot.command("menu", async (ctx) => {
-  await ctx.reply("Выберите пункт меню", {
+  await ctx.reply("👋 Выберите пункт меню", {
     reply_markup: menuKeyboard,
   });
 });
@@ -177,14 +179,20 @@ bot.hears("", async(ctx) => {
 })
 
 bot.callbackQuery("schedule", async (ctx) => {
-  await ctx.callbackQuery.message.editText("Расписание на неделю", {
+  await ctx.callbackQuery.message.editText("🎒 Расписание на неделю", {
+    reply_markup: backKeyboard,
+  });
+  await ctx.answerCallbackQuery();
+});
+bot.callbackQuery("cources-today", async (ctx) => {
+  await ctx.callbackQuery.message.editText("📃 Сегодняшние курсы", {
     reply_markup: backKeyboard,
   });
   await ctx.answerCallbackQuery();
 });
 
 bot.callbackQuery("back", async (ctx) => {
-  await ctx.callbackQuery.message.editText("Выберите пункт меню", {
+  await ctx.callbackQuery.message.editText("👋 Выберите пункт меню", {
     reply_markup: menuKeyboard,
   });
   await ctx.answerCallbackQuery();
@@ -206,10 +214,10 @@ bot.hears("📃 Новости", async (ctx) => {
   );
 });
 bot.command("help", async (ctx) => {
-  await ctx.reply("Hi");
+  await ctx.reply("🤖 Команды и возможности бота : \n /channel - Telegram канал American Corner Pavlodar \n /id - ваш ID \n /menu - главное меню \n /start - начать бота \n /help - помощь");
 });
 bot.command("id", async (ctx) => {
-  await ctx.reply(`Your ID : ${ctx.from.id}`);
+  await ctx.reply(`Your ID : ${ctx.from.id}`);  
 });
 
 bot.command("channel", async (ctx) => {
@@ -218,7 +226,7 @@ bot.command("channel", async (ctx) => {
     "https://t.me/ACnMS_PVL"
   );
   await ctx.reply(
-    "Телеграм канал American Corner Pavlodar, где вы сможете оставаться в курсе всех событий!",
+    "🔗 Телеграм канал American Corner Pavlodar, где вы сможете оставаться в курсе всех событий! 👇",
     {
       reply_markup: inlineKeyboardChannel,
     }
