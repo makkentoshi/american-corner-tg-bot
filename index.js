@@ -13,6 +13,10 @@ const { hydrate } = require("@grammyjs/hydrate");
 const bot = new Bot(process.env.BOT_API_TOKEN);
 bot.use(hydrate());
 
+const adminId = 661659768;
+
+const courses = [];
+
 bot.api.setMyCommands([
   {
     command: "start",
@@ -36,51 +40,119 @@ bot.api.setMyCommands([
   },
 ]);
 
+function once(bot, event, callback) {
+  const listener = bot.on(event, async (ctx) => {
+    callback(ctx);
+    bot.off(event, listener);
+  });
+}
+
+// start
 bot.command("start", async (ctx) => {
   await ctx.react("❤");
-  // Send the first message
-  await ctx.reply("Привет! Я бот American Corner 👋", {
-    parse_mode: "Markdown",
+
+  if (ctx.isAdmin) {
+    await ctx.reply("Welcome, admin! Use the Admin menu to manage content", {
+      reply_markup: adminMenuKeyboard,
+    });
+  } else {
+    // Send the first message
+    await ctx.reply("Привет! Я бот American Corner 👋", {
+      parse_mode: "Markdown",
+    });
+
+    // Send the second message with a delay
+    await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
+    await ctx.reply(
+      "ℹ️ Получай информацию о предстоящих ивентах, свежих новостей и анонсов с помощью этого бота!",
+      { parse_mode: "Markdown" }
+    );
+
+    // Send the third message with another delay
+    await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
+    await ctx.reply(
+      "📚 Изучай английский язык, окунись в атмосферу Америки и присоединяйся к другим любителям английского языка! 🤝 ",
+      { parse_mode: "Markdown" }
+    );
+
+    // Send the fourth message with another delay
+    await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
+    await ctx.reply(
+      "❓ Спроси меня что угодно про предстоящие курсы и волонтерство!",
+      {
+        parse_mode: "Markdown",
+      }
+    );
+  }
+});
+
+////
+
+// admin panel
+
+const adminMenuKeyboard = new InlineKeyboard()
+  .row()
+  .text("🔨 Создать курс", "create_course")
+  .text("📛 Отменить курс", "cancel_course")
+  .text("📑 Разослать новость", "send_news");
+
+// Check if the user is an admin
+bot.use(async (ctx, next) => {
+  if (ctx.from.id === adminId) {
+    ctx.isAdmin = true;
+  }
+  await next();
+});
+
+//
+
+let course = { name: "", time: "" };
+
+bot.callbackQuery("create_course", async (ctx) => {
+  await ctx.callbackQuery.message.editText("Напишите название курса", {
+    reply_markup: backKeyboard,
   });
 
-  // Send the second message with a delay
-  await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
-  await ctx.reply(
-    "ℹ️ Получай информацию о предстоящих ивентах, свежих новостей и анонсов с помощью этого бота!",
-    { parse_mode: "Markdown" }
-  );
+  bot.on("msg", async (ctx) => {
+    course.name = ctx.message.text;
+  });
 
-  // Send the third message with another delay
-  await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
-  await ctx.reply(
-    "📚 Изучай английский язык, окунись в атмосферу Америки и присоединяйся к другим любителям английского языка! 🤝 ",
-    { parse_mode: "Markdown" }
-  );
+  await ctx.answerCallbackQuery();
+});
 
-  // Send the fourth message with another delay
-  await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
+bot.on("callback_query:data", async (ctx) => {
+  if (ctx.callbackQuery.data === "cancel_course") {
+    await ctx.reply("Курс отменен");
+    await ctx.answerCallbackQuery();
+  }
+});
+
+/////
+
+bot.command("panel", async (ctx) => {
+  // const panelKeyobardLabels = ["📃 Новости", "📢 Анонсы", "📕 Курсы", "❓ FAQ"];
+
+  // const rows = panelKeyobardLabels.map((label) => {
+  //   return [Keyboard.text(label)];
+  // });
+
+  const panelKeyboard = new Keyboard()
+    .text("📃 Новости")
+    .text("📢 Анонсы")
+    .row()
+    .text("📕 Курсы")
+    .text("❓ FAQ")
+    .resized();
+
   await ctx.reply(
-    "❓ Спроси меня что угодно про предстоящие курсы и волонтерство!",
+    "👀 Привет! Я American Corner Bot \nЯ помогу тебе найти нужную информацию о ближайших курсах и новостях с уголка 👇",
     {
-      parse_mode: "Markdown",
+      reply_markup: panelKeyboard,
     }
   );
 });
-bot.command("panel", async (ctx) => {
-  const panelKeyobardLabels = ["📃 Новости", "📢 Анонсы", "📕 Курсы", "❓ FAQ"];
 
-  const rows = panelKeyobardLabels.map((label) => {
-    return [Keyboard.text(label)];
-  });
-
-  const panelKeyboard = Keyboard.from(rows)
-    .placeholder("Choose the button")
-    .resized();
-
-  await ctx.reply("Your panel :", {
-    reply_markup: panelKeyboard,
-  });
-});
+// menu keyboard
 
 const menuKeyboard = new InlineKeyboard()
   .text("Все курсы на сегодня", "cources-today")
@@ -94,12 +166,15 @@ bot.command("menu", async (ctx) => {
   });
 });
 
-bot.callbackQuery("cources-today", async (ctx) => {
-  await ctx.callbackQuery.message.editText("Курсы на сегодня", {
-    reply_markup: backKeyboard,
-  });
-  await ctx.answerCallbackQuery();
-});
+// bot.callbackQuery("cources-today", async (ctx) => {
+//   await ctx.callbackQuery.message.editText("Курсы на сегодня", {
+//     reply_markup: backKeyboard,
+//   });
+//   await ctx.answerCallbackQuery();
+// });
+bot.hears("", async(ctx) => {
+  
+})
 
 bot.callbackQuery("schedule", async (ctx) => {
   await ctx.callbackQuery.message.editText("Расписание на неделю", {
@@ -115,6 +190,14 @@ bot.callbackQuery("back", async (ctx) => {
   await ctx.answerCallbackQuery();
 });
 
+//
+
+// admin panel
+
+//
+
+// hears listener
+
 bot.hears("📃 Новости", async (ctx) => {
   await ctx.reply("Список последних новостей! :");
   await new Promise((resolve) => setTimeout(resolve, 300));
@@ -128,23 +211,7 @@ bot.command("help", async (ctx) => {
 bot.command("id", async (ctx) => {
   await ctx.reply(`Your ID : ${ctx.from.id}`);
 });
-bot.command("inline_keyboard", async (ctx) => {
-  const inlineKeyboard = new InlineKeyboard()
-    .text("", "button-1")
-    .text("", "button-2")
-    .text("", "button-3");
 
-  await ctx.reply("Выбери действие:");
-});
-// bot.callbackQuery(["button-1", "button-2", "button-3"], async (ctx) => {
-//   await ctx.answerCallbackQuery();
-//   await ctx.answer("You clicked on a button");
-// });
-
-bot.on("callback_query:data", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  await ctx.reply("You clicked a button");
-});
 bot.command("channel", async (ctx) => {
   const inlineKeyboardChannel = new InlineKeyboard().url(
     "Перейти в тг-канал",
@@ -174,6 +241,8 @@ bot.on([":media", "::url"], async (ctx) => {
 // bot.command(["say_hello", "hello", "hi"], async (ctx) => {
 //     await ctx.reply("Hi");
 //   });
+
+// error listener
 
 bot.catch((err) => {
   const ctx = err.ctx;
