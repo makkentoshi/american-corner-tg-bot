@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-const punycode = require('punycode');
+const punycode = require("punycode");
 
 const {
   Bot,
@@ -17,6 +17,22 @@ bot.use(hydrate());
 
 const adminId = 661659768;
 
+let daySchedule = [
+  {
+    name: "English Course",
+  },
+];
+let weekSchedule = [
+  {
+    day: "Monday",
+    course: "English Course",
+  },
+  {
+    day: "Tuesday",
+    course: "A.I Course",
+  },
+];
+
 // Check if user is Admin
 
 bot.use(async (ctx, next) => {
@@ -27,7 +43,6 @@ bot.use(async (ctx, next) => {
 });
 
 //
-
 
 const courses = [];
 
@@ -54,18 +69,20 @@ bot.api.setMyCommands([
   },
 ]);
 
-
 // start
 bot.command("start", async (ctx) => {
   await ctx.react("❤");
 
   if (ctx.isAdmin) {
-    await ctx.reply("Вы - Админ, используйте админское меню, чтобы взаимодействовать с курсами и новостями", {
-      reply_markup: adminMenuKeyboard,
-    });
+    await ctx.reply(
+      "⚙️ Вы - Админ, используйте админское меню, чтобы взаимодействовать с курсами и новостями",
+      {
+        reply_markup: adminMenuKeyboard,
+      }
+    );
   } else {
     // Send the first message
-    await ctx.reply("Привет! Я бот American Corner 👋", {
+    await ctx.reply("👋 Привет! Я бот American Corner", {
       parse_mode: "Markdown",
     });
 
@@ -102,32 +119,65 @@ const adminMenuKeyboard = new InlineKeyboard()
   .row()
   .text("🔨 Создать курс", "create_course")
   .text("📛 Отменить курс", "cancel_course")
+  .row()
   .text("📑 Разослать новость", "send_news");
 
 // Check if the user is an admin
+bot.callbackQuery("create_course", async (ctx) => {
+  // Отправляем сообщение, запрашивающее информацию о новом курсе
+  await ctx.reply("Введите день недели:");
+  // Устанавливаем состояние ожидания дня недели
+  ctx.session.state = "waiting_for_day";
+});
+
+bot.on("msg", async (ctx) => {
+  // Проверяем, ожидает ли бот информацию о новом курсе
+  if (ctx.session.state === "waiting_for_day") {
+    // Получаем введенный день недели        
+    const dayOfWeek = ctx.message.text;
+    // Запрашиваем информацию о курсе
+    await ctx.reply("Введите название курса:");
+    // Сохраняем введенный день недели в сессии
+    ctx.session.newCourse = { day: dayOfWeek };
+    // Устанавливаем состояние ожидания названия курса
+    ctx.session.state = "waiting_for_course";
+  } else if (ctx.session.state === "waiting_for_course") {
+    // Получаем введенное название курса
+    const courseName = ctx.message.text;
+    // Сохраняем информацию о курсе в массиве weekSchedule
+    weekSchedule.push({ day: ctx.session.newCourse.day, course: courseName });
+    // Сообщаем об успешном добавлении курса
+    await ctx.reply(
+      `Курс "${courseName}" для дня ${ctx.session.newCourse.day} успешно добавлен.`
+    );
+    // Сбрасываем состояние сессии
+    delete ctx.session.newCourse;
+    delete ctx.session.state;
+  }
+});
 
 //
 
 let course = { name: "", time: "" };
 
-bot.callbackQuery("create_course", async (ctx) => {
-  await ctx.callbackQuery.message.editText("Напишите название курса", {
-    reply_markup: backKeyboard,
-  });
+// bot.callbackQuery("create_course", async (ctx) => {
+//   await ctx.callbackQuery.message.editText("Напишите название курса", {
+//     reply_markup: backKeyboard,
+//   });
 
-  bot.on("msg", async (ctx) => {
-    course.name = ctx.message.text;
-  });
+//   bot.on("msg", async (ctx) => {
+//     course.name = ctx.message.text;
+//   });
 
-  await ctx.answerCallbackQuery();
-});
+//   await ctx.answerCallbackQuery();
+// });
 
-bot.on("callback_query:data", async (ctx) => {
-  if (ctx.callbackQuery.data === "cancel_course") {
-    await ctx.reply("Курс отменен");
-    await ctx.answerCallbackQuery();
-  }
-});
+// bot.on("callback_query:data", async (ctx) => {
+//   if (ctx.callbackQuery.data === "cancel_course") {
+//     await ctx.reply("Курс отменен");
+//     await ctx.answerCallbackQuery();
+//   }
+// });
 
 /////
 
@@ -157,13 +207,13 @@ bot.command("panel", async (ctx) => {
 // menu keyboard
 
 const menuKeyboard = new InlineKeyboard()
-  .text("Все курсы на сегодня", "cources-today")
-  .text("Расписание на неделю", "schedule");
+  .text("📊 Расписание на день", "cources-today")
+  .text("📅 Расписание на неделю", "schedule");
 
 const backKeyboard = new InlineKeyboard().text(" ⬅ Назад в меню", "back");
 
 bot.command("menu", async (ctx) => {
-  await ctx.reply("👋 Выберите пункт меню", {
+  await ctx.reply("👋 Выберите пункт меню : ", {
     reply_markup: menuKeyboard,
   });
 });
@@ -174,25 +224,34 @@ bot.command("menu", async (ctx) => {
 //   });
 //   await ctx.answerCallbackQuery();
 // });
-bot.hears("", async(ctx) => {
-  
-})
+// bot.hears("", async (ctx) => {
+//   await ctx.reply("👋 Выберите пункт меню : ", {
+//     reply_markup: menuKeyboard,
+//   });
+// });
 
 bot.callbackQuery("schedule", async (ctx) => {
-  await ctx.callbackQuery.message.editText("🎒 Расписание на неделю", {
+  const weekScheduleString = `🎒 Расписание на неделю\n${weekSchedule
+    .map((item) => `${item.day} - ${item.course}`)
+    .join("\n")}`;
+
+  await ctx.callbackQuery.message.editText(weekScheduleString, {
     reply_markup: backKeyboard,
   });
   await ctx.answerCallbackQuery();
 });
 bot.callbackQuery("cources-today", async (ctx) => {
-  await ctx.callbackQuery.message.editText("📃 Сегодняшние курсы", {
-    reply_markup: backKeyboard,
-  });
+  await ctx.callbackQuery.message.editText(
+    `📊 Расписание на день\n ${daySchedule.course}`,
+    {
+      reply_markup: backKeyboard,
+    }
+  );
   await ctx.answerCallbackQuery();
 });
 
 bot.callbackQuery("back", async (ctx) => {
-  await ctx.callbackQuery.message.editText("👋 Выберите пункт меню", {
+  await ctx.callbackQuery.message.editText("👋 Выберите пункт меню : ", {
     reply_markup: menuKeyboard,
   });
   await ctx.answerCallbackQuery();
@@ -214,10 +273,12 @@ bot.hears("📃 Новости", async (ctx) => {
   );
 });
 bot.command("help", async (ctx) => {
-  await ctx.reply("🤖 Команды и возможности бота : \n /channel - Telegram канал American Corner Pavlodar \n /id - ваш ID \n /menu - главное меню \n /start - начать бота \n /help - помощь");
+  await ctx.reply(
+    "🤖 Команды и возможности бота : \n /channel - Telegram канал American Corner Pavlodar \n /id - ваш ID \n /menu - главное меню \n /start - начать бота \n /help - помощь"
+  );
 });
 bot.command("id", async (ctx) => {
-  await ctx.reply(`Your ID : ${ctx.from.id}`);  
+  await ctx.reply(`Your ID : ${ctx.from.id}`);
 });
 
 bot.command("channel", async (ctx) => {
