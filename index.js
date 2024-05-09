@@ -8,12 +8,22 @@ const {
   HttpError,
   Keyboard,
   InlineKeyboard,
+  session,
+  Context,
 } = require("grammy");
 
 const { hydrate } = require("@grammyjs/hydrate");
 
+const {
+  conversations,
+  createConversation,
+} = require("@grammyjs/conversations");
+
 const bot = new Bot(process.env.BOT_API_TOKEN);
+
+bot.use(session({ initial: () => ({}) }));
 bot.use(hydrate());
+bot.use(conversations());
 
 const adminId = 661659768;
 
@@ -122,39 +132,45 @@ const adminMenuKeyboard = new InlineKeyboard()
   .row()
   .text("📑 Разослать новость", "send_news");
 
+// bot.use(session());
+
 // Check if the user is an admin
 bot.callbackQuery("create_course", async (ctx) => {
-  // Отправляем сообщение, запрашивающее информацию о новом курсе
-  await ctx.reply("Введите день недели:");
+  await ctx.reply("Введите день недели для нового курса:");
   // Устанавливаем состояние ожидания дня недели
   ctx.session.state = "waiting_for_day";
+  messageListener();
 });
 
-bot.on("msg", async (ctx) => {
-  // Проверяем, ожидает ли бот информацию о новом курсе
-  if (ctx.session.state === "waiting_for_day") {
-    // Получаем введенный день недели        
-    const dayOfWeek = ctx.message.text;
-    // Запрашиваем информацию о курсе
-    await ctx.reply("Введите название курса:");
-    // Сохраняем введенный день недели в сессии
-    ctx.session.newCourse = { day: dayOfWeek };
-    // Устанавливаем состояние ожидания названия курса
-    ctx.session.state = "waiting_for_course";
-  } else if (ctx.session.state === "waiting_for_course") {
-    // Получаем введенное название курса
-    const courseName = ctx.message.text;
-    // Сохраняем информацию о курсе в массиве weekSchedule
-    weekSchedule.push({ day: ctx.session.newCourse.day, course: courseName });
-    // Сообщаем об успешном добавлении курса
-    await ctx.reply(
-      `Курс "${courseName}" для дня ${ctx.session.newCourse.day} успешно добавлен.`
-    );
-    // Сбрасываем состояние сессии
-    delete ctx.session.newCourse;
-    delete ctx.session.state;
-  }
-});
+const messageListener = () => {
+  bot.on("message", async (ctx) => {
+    // Проверяем, ожидает ли бот информацию о новом курсе
+    if (ctx.session.state === "waiting_for_day") {
+      // Получаем введенный день недели
+      const dayOfWeek = ctx.message.text;
+      // Сохраняем день недели в сессии
+      ctx.session.newCourse = { day: dayOfWeek };
+      // Запрашиваем название курса
+      await ctx.reply("Введите название курса:");
+      // Устанавливаем состояние ожидания названия курса
+      ctx.session.state = "waiting_for_course";
+    } else if (ctx.session.state === "waiting_for_course") {
+      // Получаем введенное название курса
+      const courseName = ctx.message.text;
+      // Создаем новый курс и добавляем его в массив курсов
+      const newCourse = { day: ctx.session.newCourse.day, course: courseName };
+      courses.push(newCourse);
+      // Отправляем сообщение об успешном создании курса
+      await ctx.reply(
+        `Курс "${courseName}" для дня ${ctx.session.newCourse.day} успешно создан.`
+      );
+      // Сбрасываем состояние сессии
+      delete ctx.session.newCourse;
+      delete ctx.session.state;
+    } 
+    
+  });
+};
 
 //
 
@@ -213,22 +229,18 @@ const menuKeyboard = new InlineKeyboard()
 const backKeyboard = new InlineKeyboard().text(" ⬅ Назад в меню", "back");
 
 bot.command("menu", async (ctx) => {
-  await ctx.reply("👋 Выберите пункт меню : ", {
-    reply_markup: menuKeyboard,
-  });
+  if (
+    ctx.session.state &&
+    (ctx.session.state === "waiting_for_day" ||
+      ctx.session.state === "waiting_for_course")
+  ) {
+    return;
+  } else {
+    await ctx.reply("👋 Выберите пункт меню : ", {
+      reply_markup: menuKeyboard,
+    });
+  }
 });
-
-// bot.callbackQuery("cources-today", async (ctx) => {
-//   await ctx.callbackQuery.message.editText("Курсы на сегодня", {
-//     reply_markup: backKeyboard,
-//   });
-//   await ctx.answerCallbackQuery();
-// });
-// bot.hears("", async (ctx) => {
-//   await ctx.reply("👋 Выберите пункт меню : ", {
-//     reply_markup: menuKeyboard,
-//   });
-// });
 
 bot.callbackQuery("schedule", async (ctx) => {
   const weekScheduleString = `🎒 Расписание на неделю\n${weekSchedule
@@ -257,14 +269,6 @@ bot.callbackQuery("back", async (ctx) => {
   await ctx.answerCallbackQuery();
 });
 
-//
-
-// admin panel
-
-//
-
-// hears listener
-
 bot.hears("📃 Новости", async (ctx) => {
   await ctx.reply("Список последних новостей! :");
   await new Promise((resolve) => setTimeout(resolve, 300));
@@ -273,15 +277,36 @@ bot.hears("📃 Новости", async (ctx) => {
   );
 });
 bot.command("help", async (ctx) => {
+  if (
+    ctx.session.state &&
+    (ctx.session.state === "waiting_for_day" ||
+      ctx.session.state === "waiting_for_course")
+  ) {
+    return; // Просто выходим из обработчика, если ожидается ввод дня недели или названия курса
+  }
   await ctx.reply(
     "🤖 Команды и возможности бота : \n /channel - Telegram канал American Corner Pavlodar \n /id - ваш ID \n /menu - главное меню \n /start - начать бота \n /help - помощь"
   );
 });
 bot.command("id", async (ctx) => {
+  if (
+    ctx.session.state &&
+    (ctx.session.state === "waiting_for_day" ||
+      ctx.session.state === "waiting_for_course")
+  ) {
+    return;
+  }
   await ctx.reply(`Your ID : ${ctx.from.id}`);
 });
 
 bot.command("channel", async (ctx) => {
+  if (
+    ctx.session.state &&
+    (ctx.session.state === "waiting_for_day" ||
+      ctx.session.state === "waiting_for_course")
+  ) {
+    return;
+  }
   const inlineKeyboardChannel = new InlineKeyboard().url(
     "Перейти в тг-канал",
     "https://t.me/ACnMS_PVL"
