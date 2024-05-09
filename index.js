@@ -167,8 +167,7 @@ const messageListener = () => {
       // Сбрасываем состояние сессии
       delete ctx.session.newCourse;
       delete ctx.session.state;
-    } 
-    
+    }
   });
 };
 
@@ -205,11 +204,11 @@ bot.command("panel", async (ctx) => {
   // });
 
   const panelKeyboard = new Keyboard()
-    .text("📃 Новости")
-    .text("📢 Анонсы")
+    .text("📃 Новости", "news")
+    .text("📢 Анонсы", "announcements")
     .row()
-    .text("📕 Курсы")
-    .text("❓ FAQ")
+    .text("📕 Курсы", "courses")
+    .text("❓ FAQ", "faq")
     .resized();
 
   await ctx.reply(
@@ -269,7 +268,7 @@ bot.callbackQuery("back", async (ctx) => {
   await ctx.answerCallbackQuery();
 });
 
-bot.hears("📃 Новости", async (ctx) => {
+bot.hears("news", async (ctx) => {
   await ctx.reply("Список последних новостей! :");
   await new Promise((resolve) => setTimeout(resolve, 300));
   await ctx.reply(
