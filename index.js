@@ -27,6 +27,8 @@ bot.use(conversations());
 
 const adminId = 661659768;
 
+let messageListenerActive = false;
+
 let daySchedule = [
   {
     name: "English Course",
@@ -135,42 +137,50 @@ const adminMenuKeyboard = new InlineKeyboard()
 // bot.use(session());
 
 // Check if the user is an admin
+bot.use((ctx, next) => {
+  if (messageListenerActive) {
+    return messageListener(ctx, next);
+  } else {
+    return next();
+  }
+});
+
+const messageListener = async (ctx, next) => {
+  if (!messageListenerActive) return; // Exit if listener is inactive
+
+  try {
+    if (ctx.session.state === "waiting_for_day") {
+      const dayOfWeek = ctx.message.text;
+      ctx.session.newCourse = { day: dayOfWeek };
+      await ctx.reply("Введите название курса:");
+      ctx.session.state = "waiting_for_course";
+    } else if (ctx.session.state === "waiting_for_course") {
+      const courseName = ctx.message.text;
+
+      const newCourse = { day: ctx.session.newCourse.day, course: courseName };
+      courses.push(newCourse);
+      await ctx.reply(
+        `Курс "${courseName}" для дня ${ctx.session.newCourse.day} успешно создан.`
+      );
+      delete ctx.session.newCourse;
+      delete ctx.session.state;
+      messageListenerActive = false;
+      return next(); // Deactivate listener after course creation
+    }
+  } catch (error) {
+    console.error("Error in messageListener:", error);
+    await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте снова.");
+  }
+};
+
+bot.on("message", messageListener);
+
 bot.callbackQuery("create_course", async (ctx) => {
   await ctx.reply("Введите день недели для нового курса:");
   // Устанавливаем состояние ожидания дня недели
   ctx.session.state = "waiting_for_day";
-  messageListener();
+  messageListenerActive = true;
 });
-
-const messageListener = () => {
-  bot.on("message", async (ctx) => {
-    // Проверяем, ожидает ли бот информацию о новом курсе
-    if (ctx.session.state === "waiting_for_day") {
-      // Получаем введенный день недели
-      const dayOfWeek = ctx.message.text;
-      // Сохраняем день недели в сессии
-      ctx.session.newCourse = { day: dayOfWeek };
-      // Запрашиваем название курса
-      await ctx.reply("Введите название курса:");
-      // Устанавливаем состояние ожидания названия курса
-      ctx.session.state = "waiting_for_course";
-    } else if (ctx.session.state === "waiting_for_course") {
-      // Получаем введенное название курса
-      const courseName = ctx.message.text;
-      // Создаем новый курс и добавляем его в массив курсов
-      const newCourse = { day: ctx.session.newCourse.day, course: courseName };
-      courses.push(newCourse);
-      // Отправляем сообщение об успешном создании курса
-      await ctx.reply(
-        `Курс "${courseName}" для дня ${ctx.session.newCourse.day} успешно создан.`
-      );
-      // Сбрасываем состояние сессии
-      delete ctx.session.newCourse;
-      delete ctx.session.state;
-    }
-  });
-};
-
 //
 
 let course = { name: "", time: "" };
