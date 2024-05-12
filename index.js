@@ -19,15 +19,22 @@ const {
   createConversation,
 } = require("@grammyjs/conversations");
 
+
+
+
 const bot = new Bot(process.env.BOT_API_TOKEN);
 
-bot.use(session({ initial: () => ({}) }));
+bot.use(session({
+  initial() {
+    // return empty object for now
+    return {};
+  },
+}));
 bot.use(hydrate());
 bot.use(conversations());
 
 const adminId = 661659768;
 
-let messageListenerActive = false;
 
 let daySchedule = [
   {
@@ -56,7 +63,7 @@ bot.use(async (ctx, next) => {
 
 //
 
-const courses = [];
+
 
 bot.api.setMyCommands([
   {
@@ -130,33 +137,29 @@ bot.command("start", async (ctx) => {
 const adminMenuKeyboard = new InlineKeyboard()
   .row()
   .text("🔨 Создать курс", "create_course")
-  .text("📛 Отменить курс", "cancel_course")
+  .text("📛 Отменить курс", "delete_course")
   .row()
   .text("📑 Разослать новость", "send_news");
 
-// bot.use(session());
 
-// Check if the user is an admin
-bot.use((ctx, next) => {
-  if (messageListenerActive) {
-    return messageListener(ctx, next);
-  } else {
-    return next();
-  }
-});
+// Add course
 
-const messageListener = async (ctx, next) => {
-  if (!messageListenerActive) return; // Exit if listener is inactive
+let messageListenerActive = false;
+
+let courses = [];
+
+const messageListener = async (ctx) => {
+  if (!messageListenerActive) return; // Выход, если обработчик неактивен
 
   try {
     if (ctx.session.state === "waiting_for_day") {
       const dayOfWeek = ctx.message.text;
       ctx.session.newCourse = { day: dayOfWeek };
+      await ctx.answerCallbackQuery();
       await ctx.reply("Введите название курса:");
       ctx.session.state = "waiting_for_course";
     } else if (ctx.session.state === "waiting_for_course") {
       const courseName = ctx.message.text;
-
       const newCourse = { day: ctx.session.newCourse.day, course: courseName };
       courses.push(newCourse);
       await ctx.reply(
@@ -164,16 +167,20 @@ const messageListener = async (ctx, next) => {
       );
       delete ctx.session.newCourse;
       delete ctx.session.state;
-      messageListenerActive = false;
-      return next(); // Deactivate listener after course creation
+      messageListenerActive = false; // Сбрасываем флаг после создания курса
     }
   } catch (error) {
-    console.error("Error in messageListener:", error);
+    console.error("Ошибка в обработчике сообщений:", error);
     await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте снова.");
   }
 };
-
-bot.on("message", messageListener);
+bot.use((ctx, next) => {
+  if (messageListenerActive) {
+    return messageListener(ctx);
+  } else {
+    return next();
+  }
+});
 
 bot.callbackQuery("create_course", async (ctx) => {
   await ctx.reply("Введите день недели для нового курса:");
@@ -181,30 +188,165 @@ bot.callbackQuery("create_course", async (ctx) => {
   ctx.session.state = "waiting_for_day";
   messageListenerActive = true;
 });
+
+
+///////
+
+bot.use(createConversation(deleteCourse));
+
+bot.callbackQuery("delete_course", async (ctx) => {
+  try {
+    let deleteMessage = "Выберите номер курса для удаления:\n";
+    // Формируем сообщение со списком курсов с их номерами
+    courses.forEach((course, index) => {
+      deleteMessage += `${index + 1}. ${course.course} - ${course.day}\n`;
+    });
+
+    // Отправляем сообщение с вариантами для удаления
+    await ctx.reply(deleteMessage);
+
+    await ctx.answerCallbackQuery();
+
+    // Запускаем диалог удаления курса
+    await ctx.conversation.enter("deleteCourse");
+    // await deleteCourse(conversation, ctx);
+  } catch (error) {
+    console.error("Ошибка при попытке удаления курса:", error);
+    await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте позже.");
+  }
+});
+
+
+
+// Определение функции диалога удаления курса
+  async function deleteCourse(conversation, ctx) {
+    // Ожидание ввода номера курса для удаления
+    const courseNumberCtx = await conversation.waitFor("msg:text");
+
+    try {
+      // Преобразование полученного текста в число
+      const courseNumber = parseInt(courseNumberCtx.msg.text);
+
+      // Проверка корректности введенного номера курса
+      if (courseNumber > 0 && courseNumber <= courses.length) {
+        // Удаление курса из массива courses
+        const deletedCourse = courses.splice(courseNumber - 1, 1);
+
+        // Отправка сообщения о успешном удалении курса
+        await ctx.reply(`Курс "${deletedCourse[0].course}" для дня ${deletedCourse[0].day} успешно удален.`);
+      } else {
+        // Отправка сообщения, если введен некорректный номер курса
+        await ctx.reply("Некорректный номер курса. Пожалуйста, выберите номер курса из списка.");
+      }
+    } catch (error) {
+      // Отправка сообщения об ошибке, если произошла ошибка в процессе
+      console.error("Ошибка в обработке сообщения:", error);
+      await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте позже.");
+    }
+  }
+
+
+// 
+// Send News
+
+
+bot.use(createConversation(sendNews));
+
+
+
+bot.callbackQuery("send_news", async (ctx) => {
+  try {
+    
+  
+    // Запускаем диалог для ввода текста новости
+    await ctx.reply("Напишите любой текст или новость, которую вы желаете разослать:");
+  
+    await ctx.conversation.enter("sendNews");
+
+    
+
+  } catch (error) {
+    console.error("Ошибка при запуске диалога рассылки новостей:", error);
+    await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте позже.");
+  }
+});
+
+const publishKeyboard = new InlineKeyboard()
+  .text("✅ Да, опубликовать", "confirm_publish").row()
+  .text("❌ Отмена", "cancel_publish");
+
+  const readyKeyboard = new InlineKeyboard().text("✅ Готово", "ready")
+
+  bot.callbackQuery("ready", async (ctx) => {
+    await ctx.callbackQuery.message.editText("Команда успешно сработала", {
+          reply_markup: readyKeyboard,
+        });
+        await ctx.answerCallbackQuery();
+    await ctx.reply("Готово! Ваша новость успешно опубликована.");
+    
+  })
+  
+
+
+async function sendNews(conversation, ctx) {
+  const newsTextCtx = await conversation.waitFor("msg:text");
+     
+
+  // Get the news text from the context
+  const newsText = newsTextCtx.msg.text;
+
+  // Reply with the news text and ask for confirmation
+  await ctx.reply(`Ваша новость: "${newsText}"\nВы уверены, что хотите опубликовать её?`, {
+    reply_markup: publishKeyboard,
+  });
+
+
+
+  
+  try {
+
+    
+    
+  
+    
+    // Here you can implement the logic to actually publish the news to users
+
+  } catch (error) {
+    // Handle error if occurred while sending news
+    console.error("Ошибка при отправке новости:", error);
+    await ctx.reply("Произошла ошибка при рассылке новости. Пожалуйста, попробуйте позже.");
+  }
+}
+
+bot.callbackQuery("cancel_publish", async (ctx) => {
+  await ctx.reply("Публикация новости отменена.");
+});
+bot.callbackQuery("confirm_publish", async (ctx) => {
+  try {
+    // Рассылаем новость всем пользователям
+  
+    const newsText = ctx.callbackQuery.message.text.split(": ")[1]; // Получаем текст новости из сообщения
+  
+      try {
+     
+        await ctx.reply("Новость успешно разослана всем пользователям.");
+      } catch (error) {
+        console.error(`Ошибка при отправке новости пользователям:`, error);
+      }
+    
+
+    // Отправляем сообщение об успешной рассылке новости
+    
+  } catch (error) {
+    console.error("Ошибка при публикации новости:", error);
+    await ctx.reply("Произошла ошибка при публикации новости. Пожалуйста, попробуйте позже.");
+  }
+});
+
+
 //
 
-let course = { name: "", time: "" };
-
-// bot.callbackQuery("create_course", async (ctx) => {
-//   await ctx.callbackQuery.message.editText("Напишите название курса", {
-//     reply_markup: backKeyboard,
-//   });
-
-//   bot.on("msg", async (ctx) => {
-//     course.name = ctx.message.text;
-//   });
-
-//   await ctx.answerCallbackQuery();
-// });
-
-// bot.on("callback_query:data", async (ctx) => {
-//   if (ctx.callbackQuery.data === "cancel_course") {
-//     await ctx.reply("Курс отменен");
-//     await ctx.answerCallbackQuery();
-//   }
-// });
-
-/////
+// Определение функции диалога рассылки новостей
 
 bot.command("panel", async (ctx) => {
   // const panelKeyobardLabels = ["📃 Новости", "📢 Анонсы", "📕 Курсы", "❓ FAQ"];
@@ -232,7 +374,7 @@ bot.command("panel", async (ctx) => {
 // menu keyboard
 
 const menuKeyboard = new InlineKeyboard()
-  .text("📊 Расписание на день", "cources-today")
+  .text("📊 Расписание на день", "cources-today").row()
   .text("📅 Расписание на неделю", "schedule");
 
 const backKeyboard = new InlineKeyboard().text(" ⬅ Назад в меню", "back");
@@ -252,7 +394,7 @@ bot.command("menu", async (ctx) => {
 });
 
 bot.callbackQuery("schedule", async (ctx) => {
-  const weekScheduleString = `🎒 Расписание на неделю\n${weekSchedule
+  const weekScheduleString = `🎒 Расписание на неделю\n${courses
     .map((item) => `${item.day} - ${item.course}`)
     .join("\n")}`;
 
