@@ -352,6 +352,8 @@ async function deleteCourse(conversation, ctx) {
 //
 // Send News
 
+// Comments
+
 bot.use(createConversation(sendNews));
 
 bot.callbackQuery("send_news", async (ctx) => {
