@@ -129,7 +129,7 @@ bot.use(conversations());
 
 const adminId = process.env.DEV_ADMIN_TOKEN;
 
-const User = require("./database.js");
+const User = require("./controllers/database.js");
 
 function getRandomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -237,7 +237,7 @@ bot.command("admin", async (ctx) => {
           reply_markup: adminMenuKeyboard,
         }
       );
-    } 
+    }
   } else {
     await ctx.reply("Вы не админ!");
   }
@@ -554,6 +554,7 @@ bot.command("id", async (ctx) => {
     return;
   }
   try {
+    
     const user = await User.findOne({ userId: ctx.from.id });
     if (user) {
       ctx.reply(`Ваш ID: ${user.userId}`);
