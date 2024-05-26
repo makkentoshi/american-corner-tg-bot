@@ -329,6 +329,7 @@ async function deleteCourse(conversation, ctx) {
     const courses = await Course.find({});
 
     if (courseNumber > 0 && courseNumber <= courses.length) {
+    
       const deletedCourse = await Course.findByIdAndRemove(
         courses[courseNumber - 1]._id
       );
