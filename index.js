@@ -127,7 +127,9 @@ bot.use(
 bot.use(hydrate());
 bot.use(conversations());
 
-const adminId = 661659768;
+const adminId = process.env.DEV_ADMIN_TOKEN;
+
+const User = require("./database.js");
 
 function getRandomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -187,47 +189,59 @@ bot.api.setMyCommands([
 
 // start
 bot.command("start", async (ctx) => {
+  const newUser = new User({ userId: ctx.from.id });
+  try {
+    await newUser.save();
+  } catch (error) {
+    console.error(error);
+  }
   await ctx.react("❤");
 
-  if (ctx.isAdmin) {
-    await ctx.reply(
-      "⚙️ Вы - Админ, используйте админское меню, чтобы взаимодействовать с курсами и новостями",
-      {
-        reply_markup: adminMenuKeyboard,
-      }
-    );
-  } else {
-    // Send the first message
-    await ctx.reply("👋 Привет! Я бот American Corner", {
+  // Send the first message
+  await ctx.reply("👋 Привет! Я бот American Corner", {
+    parse_mode: "Markdown",
+  });
+
+  // Send the second message with a delay
+  await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
+  await ctx.reply(
+    "ℹ️ Получай информацию о предстоящих ивентах, свежих новостей и анонсов с помощью этого бота!",
+    { parse_mode: "Markdown" }
+  );
+
+  // Send the third message with another delay
+  await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
+  await ctx.reply(
+    "📚 Изучай английский язык, окунись в атмосферу Америки и присоединяйся к другим любителям английского языка! 🤝 ",
+    { parse_mode: "Markdown" }
+  );
+
+  // Send the fourth message with another delay
+  await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
+  await ctx.reply(
+    "❓ Спроси меня что угодно про предстоящие курсы и волонтерство!",
+    {
       parse_mode: "Markdown",
-    });
-
-    // Send the second message with a delay
-    await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
-    await ctx.reply(
-      "ℹ️ Получай информацию о предстоящих ивентах, свежих новостей и анонсов с помощью этого бота!",
-      { parse_mode: "Markdown" }
-    );
-
-    // Send the third message with another delay
-    await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
-    await ctx.reply(
-      "📚 Изучай английский язык, окунись в атмосферу Америки и присоединяйся к другим любителям английского языка! 🤝 ",
-      { parse_mode: "Markdown" }
-    );
-
-    // Send the fourth message with another delay
-    await new Promise((resolve) => setTimeout(resolve, 700)); // Adjust delay as needed
-    await ctx.reply(
-      "❓ Спроси меня что угодно про предстоящие курсы и волонтерство!",
-      {
-        parse_mode: "Markdown",
-      }
-    );
-  }
+    }
+  );
 });
 
 ////
+
+bot.command("admin", async (ctx) => {
+  if (ctx.isAdmin) {
+    if (ctx.isAdmin) {
+      await ctx.reply(
+        "⚙️ Вы - Админ, используйте админское меню, чтобы взаимодействовать с курсами и новостями",
+        {
+          reply_markup: adminMenuKeyboard,
+        }
+      );
+    } 
+  } else {
+    await ctx.reply("Вы не админ!");
+  }
+});
 
 // admin panel
 
@@ -539,7 +553,17 @@ bot.command("id", async (ctx) => {
   ) {
     return;
   }
-  await ctx.reply(`Your ID : ${ctx.from.id}`);
+  try {
+    const user = await User.findOne({ userId: ctx.from.id });
+    if (user) {
+      ctx.reply(`Ваш ID: ${user.userId}`);
+    } else {
+      ctx.reply("Вы не зарегистрированы.");
+    }
+  } catch (error) {
+    console.error(error);
+    ctx.reply("Ошибка получения ID.");
+  }
 });
 
 bot.command("channel", async (ctx) => {
