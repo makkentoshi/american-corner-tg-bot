@@ -1,4 +1,8 @@
 require("dotenv").config();
+require("./controllers/database.js");
+
+const Course = require("./models/course.js");
+const User = require("./models/user.js");
 
 const punycode = require("punycode");
 
@@ -18,6 +22,64 @@ const {
   conversations,
   createConversation,
 } = require("@grammyjs/conversations");
+
+const bot = new Bot(process.env.BOT_API_TOKEN);
+
+bot.use(
+  session({
+    initial() {
+      return {};
+    },
+  })
+);
+bot.use(hydrate());
+bot.use(conversations());
+
+const adminId = process.env.DEV_ADMIN_TOKEN;
+
+// Check if user is Admin
+bot.use(async (ctx, next) => {
+  if (ctx.from.id === adminId) {
+    ctx.isAdmin = true;
+  }
+  await next();
+});
+
+//
+
+bot.api.setMyCommands([
+  {
+    command: "start",
+    description: "Start a bot",
+  },
+  {
+    command: "help",
+    description: "Get help",
+  },
+  {
+    command: "menu",
+    description: "Menu",
+  },
+  {
+    command: "id",
+    description: "Provide your ID",
+  },
+  {
+    command: "channel",
+    description: "Our announcements channel",
+  },
+]);
+
+async function getAllUserIds() {
+  try {
+    const users = await User.find({}).select("_id");
+    const userIds = users.map((user) => user._id);
+    return userIds;
+  } catch (error) {
+    console.error("Ошибка при получении ID пользователей:", error);
+    throw error;
+  }
+}
 
 const emojiArray = [
   "✌",
@@ -113,83 +175,14 @@ const emojiArray = [
   "💛",
   "💚",
 ];
-
-const bot = new Bot(process.env.BOT_API_TOKEN);
-
-bot.use(
-  session({
-    initial() {
-      return {};
-    },
-  })
-);
-bot.use(hydrate());
-bot.use(conversations());
-
-const adminId = process.env.DEV_ADMIN_TOKEN;
-
-const Course = require("./models/course");
-const User = require("./controllers/database.js");
-
 function getRandomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
-
 const randomEmoji = getRandomElement(emojiArray);
 
-let daySchedule = [
-  {
-    name: "English Course",
-  },
-];
-let weekSchedule = [
-  {
-    day: "Monday",
-    course: "English Course",
-  },
-  {
-    day: "Tuesday",
-    course: "A.I Course",
-  },
-];
-
-// Check if user is Admin
-
-bot.use(async (ctx, next) => {
-  if (ctx.from.id === adminId) {
-    ctx.isAdmin = true;
-  }
-  await next();
-});
-
-//
-
-bot.api.setMyCommands([
-  {
-    command: "start",
-    description: "Start a bot",
-  },
-  {
-    command: "help",
-    description: "Get help",
-  },
-  {
-    command: "menu",
-    description: "Menu",
-  },
-  {
-    command: "id",
-    description: "Provide your ID",
-  },
-  {
-    command: "channel",
-    description: "Our announcements channel",
-  },
-]);
-
 bot.command("start", async (ctx) => {
-  const newUser = new User({ userId: ctx.from.id });
   try {
+    const newUser = new User({ userId: ctx.from.id, isAdmin : false });
     await newUser.save();
   } catch (error) {
     console.error(error);
@@ -224,17 +217,21 @@ bot.command("start", async (ctx) => {
 ////
 
 bot.command("admin", async (ctx) => {
-  if (ctx.isAdmin) {
-    if (ctx.isAdmin) {
+  try {
+    const user = await User.findOne({ userId: ctx.from.id });
+    if (user && user.isAdmin) {
       await ctx.reply(
         "⚙️ Вы - Админ, используйте админское меню, чтобы взаимодействовать с курсами и новостями",
         {
           reply_markup: adminMenuKeyboard,
         }
       );
+    } else {
+      await ctx.reply("Вы не админ!");
     }
-  } else {
-    await ctx.reply("Вы не админ!");
+  } catch (error) {
+    console.error("Ошибка при проверке статуса администратора:", error);
+    await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте позже.");
   }
 });
 
@@ -329,7 +326,6 @@ async function deleteCourse(conversation, ctx) {
     const courses = await Course.find({});
 
     if (courseNumber > 0 && courseNumber <= courses.length) {
-    
       const deletedCourse = await Course.findByIdAndRemove(
         courses[courseNumber - 1]._id
       );
@@ -411,15 +407,16 @@ bot.callbackQuery("confirm_publish", async (ctx) => {
   try {
     const newsText = ctx.callbackQuery.message.text.split(": ")[1];
 
-    try {
-      await ctx.reply("Новость успешно разослана всем пользователям.");
-    } catch (error) {
-      console.error(`Ошибка при отправке новости пользователям:`, error);
+    const users = await User.find({});
+
+    for (const user of users) {
+      await ctx.telegram.sendMessage(user.userId, newsText);
     }
+    await ctx.reply("Новость успешно разослана всем пользователям.");
   } catch (error) {
-    console.error("Ошибка при публикации новости:", error);
+    console.error(`Ошибка при отправке новости пользователям:`, error);
     await ctx.reply(
-      "Произошла ошибка при публикации новости. Пожалуйста, попробуйте позже."
+      "Произошла ошибка при рассылке новости. Пожалуйста, попробуйте позже."
     );
   }
 });
