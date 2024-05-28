@@ -263,9 +263,11 @@ async function createCourse(conversation, ctx) {
 
   try {
     const course = new Course({
-      day: dayOfWeek,
       title: courseName,
-      time: courseTime,
+      dayschedule: {
+        day: dayOfWeek,
+        time: courseTime,
+      },
     });
 
     await course.save();
@@ -439,15 +441,30 @@ bot.command("menu", async (ctx) => {
   }
 });
 
+function getCurrentDay() {
+  const days = [
+    "Воскресенье",
+    "Понедельник",
+    "Вторник",
+    "Среда",
+    "Четверг",
+    "Пятница",
+    "Суббота",
+  ];
+  const currentDay = new Date().getDay();
+  return days[currentDay];
+}
+
 bot.callbackQuery("schedule", async (ctx) => {
   try {
-    const courses = await Course.find({});
-
+    const courses = await Course.find({}).sort("dayschedule.day");
     const weekScheduleString = `🎒 Расписание на неделю\n${courses
-      .map((course) => `${course.day} - ${course.title} (${course.time})`)
+      .map(
+        (course) =>
+          `${course.dayschedule.day} - ${course.title} (${course.dayschedule.time})`
+      )
       .join("\n")}`;
 
-    // Обновление сообщения с расписанием
     await ctx.callbackQuery.message.editText(weekScheduleString, {
       reply_markup: backKeyboard,
     });
@@ -457,14 +474,24 @@ bot.callbackQuery("schedule", async (ctx) => {
     await ctx.reply("Произошла ошибка при получении расписания.");
   }
 });
+
 bot.callbackQuery("cources-today", async (ctx) => {
-  await ctx.callbackQuery.message.editText(
-    `📊 Расписание на день\n ${daySchedule.course}`,
-    {
+  try {
+    const currentDay = getCurrentDay();
+    const todayCourses = await Course.find({ "dayschedule.day": currentDay });
+
+    const dayScheduleString = `📊 Расписание на ${currentDay}\n${todayCourses
+      .map((course) => `${course.title} (${course.dayschedule.time})`)
+      .join("\n")}`;
+
+    await ctx.callbackQuery.message.editText(dayScheduleString, {
       reply_markup: backKeyboard,
-    }
-  );
-  await ctx.answerCallbackQuery();
+    });
+    await ctx.answerCallbackQuery();
+  } catch (error) {
+    console.error("Ошибка при получении расписания курсов на сегодня:", error);
+    await ctx.reply("Произошла ошибка при получении расписания на сегодня.");
+  }
 });
 
 bot.callbackQuery("back", async (ctx) => {
