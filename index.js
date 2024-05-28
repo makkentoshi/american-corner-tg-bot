@@ -180,6 +180,14 @@ function getRandomElement(array) {
 }
 const randomEmoji = getRandomElement(emojiArray);
 
+const permanentKeyboard = new Keyboard()
+  .text("📃 Новости")
+  .text("📢 Анонсы")
+  .row()
+  .text("📕 Курсы")
+  .text("❓ FAQ")
+  .resized();
+
 bot.command("start", async (ctx) => {
   try {
     const newUser = new User({ userId: ctx.from.id, isAdmin: false });
@@ -195,7 +203,7 @@ bot.command("start", async (ctx) => {
 
   await new Promise((resolve) => setTimeout(resolve, 700));
   await ctx.reply(
-    "ℹ️ Получай информацию о предстоящих ивентах, свежих новостей и анонсов с помощью этого бота!",
+    "ℹ️ Получай информацию о предстоящих ивентах, свежих новостях и анонсов с помощью этого бота!",
     { parse_mode: "Markdown" }
   );
 
@@ -207,14 +215,38 @@ bot.command("start", async (ctx) => {
 
   await new Promise((resolve) => setTimeout(resolve, 700));
   await ctx.reply(
-    "❓ Спроси меня что угодно про предстоящие курсы и волонтерство!",
+    "❓ Узнавай информацию про предстоящие курсы и волонтерство!",
     {
       parse_mode: "Markdown",
+    }
+  );
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  await ctx.reply(
+    "👀 Привет! Я American Corner Bot 🇺🇸\n📁 Я помогу тебе найти нужную информацию о ближайших курсах и новостях с уголка\nНажми на кнопку меню, чтобы продолжить взаимодействие с ботом 👇",
+
+    {
+      reply_markup: permanentKeyboard,
     }
   );
 });
 
 ////
+
+bot.hears("📃 Новости", async (ctx) => {
+  await ctx.reply("Здесь будет информация для Новости.");
+});
+
+bot.hears("📢 Анонсы", async (ctx) => {
+  await ctx.reply("Здесь будет информация для Анонсы.");
+});
+
+bot.hears("📕 Курсы", async (ctx) => {
+  await ctx.reply("Здесь будет информация для Курсы.");
+});
+
+bot.hears("❓ FAQ", async (ctx) => {
+  await ctx.reply("Здесь будет информация для FAQ.");
+});
 
 bot.command("admin", async (ctx) => {
   try {
@@ -403,22 +435,7 @@ bot.callbackQuery("confirm_publish", async (ctx) => {
   }
 });
 
-bot.command("panel", async (ctx) => {
-  const panelKeyboard = new Keyboard()
-    .text("📃 Новости", "news")
-    .text("📢 Анонсы", "announcements")
-    .row()
-    .text("📕 Курсы", "courses")
-    .text("❓ FAQ", "faq")
-    .resized();
-
-  await ctx.reply(
-    "👀 Привет! Я American Corner Bot 🇺🇸\n📁 Я помогу тебе найти нужную информацию о ближайших курсах и новостях с уголка\nНажми на кнопку меню, чтобы продолжить взаимодействие с ботом 👇",
-    {
-      reply_markup: panelKeyboard,
-    }
-  );
-});
+// переместись
 
 const menuKeyboard = new InlineKeyboard()
   .text("📊 Расписание на день", "cources-today")
@@ -439,6 +456,17 @@ bot.command("menu", async (ctx) => {
       reply_markup: menuKeyboard,
     });
   }
+});
+
+bot.callbackQuery("faq", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  await ctx.editMessageText("Здесь будет информация для FAQ."); // Измените текст на нужный вам
+});
+
+bot.callbackQuery("courses", async (ctx) => {
+  await ctx.reply("👋 Выберите пункт меню : ", {
+    reply_markup: menuKeyboard,
+  });
 });
 
 function getCurrentDay() {
