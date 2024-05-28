@@ -182,7 +182,7 @@ const randomEmoji = getRandomElement(emojiArray);
 
 bot.command("start", async (ctx) => {
   try {
-    const newUser = new User({ userId: ctx.from.id, isAdmin : false });
+    const newUser = new User({ userId: ctx.from.id, isAdmin: false });
     await newUser.save();
   } catch (error) {
     console.error(error);
@@ -242,61 +242,41 @@ const adminMenuKeyboard = new InlineKeyboard()
   .row()
   .text("📑 Разослать новость", "send_news");
 
-let messageListenerActive = false;
-
-let courses = [];
-
-const messageListener = async (ctx) => {
-  if (!messageListenerActive) return;
-
-  try {
-    if (ctx.session.state === "waiting_for_day") {
-      const dayOfWeek = ctx.message.text;
-      ctx.session.newCourse = { day: dayOfWeek };
-      await ctx.reply("Введите название курса:");
-      ctx.session.state = "waiting_for_course";
-    } else if (ctx.session.state === "waiting_for_course") {
-      const courseName = ctx.message.text;
-      ctx.session.newCourse.course = courseName;
-      await ctx.reply("Введите время курса:");
-      ctx.session.state = "waiting_for_time";
-    } else if (ctx.session.state === "waiting_for_time") {
-      const courseTime = ctx.message.text;
-
-      const course = new Course({
-        day: ctx.session.newCourse.day,
-        course: ctx.session.newCourse.course,
-        time: courseTime,
-      });
-
-      await course.save();
-      await ctx.reply(
-        `Курс "${ctx.session.newCourse.course}" для дня ${ctx.session.newCourse.day} на время ${courseTime} успешно создан и сохранен в базе данных.`
-      );
-
-      delete ctx.session.newCourse;
-      delete ctx.session.state;
-      messageListenerActive = false;
-    }
-  } catch (error) {
-    console.error("Ошибка в обработчике сообщений:", error);
-    await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте снова.");
-  }
-};
-bot.use((ctx, next) => {
-  if (messageListenerActive) {
-    return messageListener(ctx);
-  } else {
-    return next();
-  }
-});
+bot.use(createConversation(createCourse));
 
 bot.callbackQuery("create_course", async (ctx) => {
   await ctx.reply("Введите день недели для нового курса:");
-
-  ctx.session.state = "waiting_for_day";
-  messageListenerActive = true;
+  await ctx.conversation.enter("createCourse");
 });
+
+async function createCourse(conversation, ctx) {
+  const dayOfWeekCtx = await conversation.waitFor("msg:text");
+  const dayOfWeek = dayOfWeekCtx.msg.text;
+  await ctx.reply("Введите название курса:");
+
+  const courseNameCtx = await conversation.waitFor("msg:text");
+  const courseName = courseNameCtx.msg.text;
+  await ctx.reply("Введите время курса:");
+
+  const courseTimeCtx = await conversation.waitFor("msg:text");
+  const courseTime = courseTimeCtx.msg.text;
+
+  try {
+    const course = new Course({
+      day: dayOfWeek,
+      title: courseName,
+      time: courseTime,
+    });
+
+    await course.save();
+    await ctx.reply(
+      `Курс "${courseName}" для дня ${dayOfWeek} на время ${courseTime} успешно создан и сохранен в базе данных.`
+    );
+  } catch (error) {
+    console.error("Ошибка при создании курса:", error);
+    await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте снова.");
+  }
+}
 
 //
 
@@ -460,14 +440,22 @@ bot.command("menu", async (ctx) => {
 });
 
 bot.callbackQuery("schedule", async (ctx) => {
-  const weekScheduleString = `🎒 Расписание на неделю\n${courses
-    .map((item) => `${item.day} - ${item.course} (${item.time})`)
-    .join("\n")}`;
+  try {
+    const courses = await Course.find({});
 
-  await ctx.callbackQuery.message.editText(weekScheduleString, {
-    reply_markup: backKeyboard,
-  });
-  await ctx.answerCallbackQuery();
+    const weekScheduleString = `🎒 Расписание на неделю\n${courses
+      .map((course) => `${course.day} - ${course.title} (${course.time})`)
+      .join("\n")}`;
+
+    // Обновление сообщения с расписанием
+    await ctx.callbackQuery.message.editText(weekScheduleString, {
+      reply_markup: backKeyboard,
+    });
+    await ctx.answerCallbackQuery();
+  } catch (error) {
+    console.error("Ошибка при получении расписания курсов:", error);
+    await ctx.reply("Произошла ошибка при получении расписания.");
+  }
 });
 bot.callbackQuery("cources-today", async (ctx) => {
   await ctx.callbackQuery.message.editText(
