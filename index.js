@@ -184,6 +184,11 @@ const permanentKeyboard = new Keyboard()
   .text("❓ FAQ")
   .resized();
 
+  const inlineKeyboardChannel = new InlineKeyboard().url(
+    "Перейти в тг-канал",
+    "https://t.me/ACnMS_PVL"
+  );
+
 bot.command("start", async (ctx) => {
   try {
     const newUser = new User({ userId: ctx.from.id, isAdmin: false });
@@ -229,11 +234,21 @@ bot.command("start", async (ctx) => {
 ////
 
 bot.hears("📃 Новости", async (ctx) => {
-  await ctx.reply("Здесь будет информация для Новости.");
+  await ctx.reply(
+    "⚡ Читай актуальные новости в нашем Telegram-канале 👇",
+    {
+      reply_markup: inlineKeyboardChannel,
+    }
+  );
 });
 
 bot.hears("📢 Анонсы", async (ctx) => {
-  await ctx.reply("Здесь будет информация для Анонсы.");
+  await ctx.reply(
+    "📫 Получи первым информацию об анонсах и новых ивентах в нашем Telegram-канале 👇",
+    {
+      reply_markup: inlineKeyboardChannel,
+    }
+  );
 });
 
 bot.hears("📕 Курсы", async (ctx) => {
@@ -541,13 +556,7 @@ bot.callbackQuery("back", async (ctx) => {
   await ctx.answerCallbackQuery();
 });
 
-bot.hears("news", async (ctx) => {
-  await ctx.reply("Список последних новостей! :");
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  await ctx.reply(
-    "Don't miss out! Join our Telegram channel now for limited-time offers and community events."
-  );
-});
+
 bot.command("help", async (ctx) => {
   if (
     ctx.session.state &&
@@ -589,10 +598,7 @@ bot.command("channel", async (ctx) => {
   ) {
     return;
   }
-  const inlineKeyboardChannel = new InlineKeyboard().url(
-    "Перейти в тг-канал",
-    "https://t.me/ACnMS_PVL"
-  );
+
   await ctx.reply(
     "🔗 Телеграм канал American Corner Pavlodar, где вы сможете оставаться в курсе всех событий! 👇",
     {
