@@ -185,12 +185,16 @@ const inlineKeyboardChannel = new InlineKeyboard().url(
 
 bot.command("start", async (ctx) => {
   try {
-    const newUser = new User({ userId: ctx.from.id, isAdmin: false });
-    await newUser.save();
+    const existingUser = await User.findOne({ userId: ctx.from.id });
+
+    if (!existingUser) {
+      const newUser = new User({ userId: ctx.from.id, isAdmin: false });
+      await newUser.save();
+      await ctx.react("❤");
+    }
   } catch (error) {
     console.error(error);
   }
-  await ctx.react("❤");
 
   await ctx.reply("👋 Привет! Я American Corner бот", {
     parse_mode: "Markdown",
@@ -377,62 +381,49 @@ async function deleteCourse(conversation, ctx) {
 }
 
 // Send News
-async function sendNewsToAllUsers(newsText, bot) {
-  // Получаем список всех пользователей из базы данных
-  const users = await User.find({});
-  
-  // Отправляем новость каждому пользователю
-  for (const user of users) {
-    await bot.api.sendMessage(user.userId, newsText);
-  }
-}
 
-// Клавиатура для подтверждения публикации
-const confirmKeyboard = new InlineKeyboard()
-  .text("✅ Да, опубликовать", "confirm_publish")
-  .row()
-  .text("❌ Отмена", "cancel_publish");
-
-// Определяем функцию sendNews для Conversation
-async function sendNews(conversation, ctx) {
-  await ctx.reply("Напишите любой текст или новость, которую вы желаете разослать:");
-  const newsTextCtx = await conversation.waitFor("msg:text");
-  const newsText = newsTextCtx.msg.text;
-  ctx.session.newsText = newsText; // Сохраняем текст новости в сессии
-  console.log( ctx.session.newsText)
-  await ctx.reply("Вы уверены, что хотите опубликовать эту новость?", {
-    reply_markup: confirmKeyboard,
-  });
-}
-
-// Регистрируем функцию sendNews как Conversation
 bot.use(createConversation(sendNews));
 
-// Обработчик для начала рассылки новостей
 bot.callbackQuery("send_news", async (ctx) => {
   await ctx.conversation.enter("sendNews");
 });
 
-// Обработчик для отмены публикации новости
-bot.callbackQuery("cancel_publish", async (ctx) => {
-  await ctx.reply("Публикация новости отменена.");
-  ctx.session.newsText = null; // Очищаем сохраненный текст новости из сессии
-});
+async function sendNews(conversation, ctx) {
+  await ctx.reply("Пожалуйста, введите текст новости:");
+  const textResponse = await conversation.wait();
+  const newsText = textResponse.message?.text;
 
-// Обработчик для подтверждения публикации новости
-bot.callbackQuery("confirm_publish", async (ctx) => {
-  const newsText = ctx.session.newsText; 
-  console.log(newsText)
-  if (newsText) {
-    await sendNewsToAllUsers(newsText, bot);
-    await ctx.reply("Новость успешно разослана всем пользователям.");
-    ctx.session.newsText = null; // Очищаем сохраненный текст новости из сессии
+  await ctx.reply(
+    `Вы уверены, что хотите опубликовать следующий текст?\n"${newsText}"`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "✅ Да", callback_data: "confirm" }],
+          [{ text: "❌ Нет", callback_data: "cancel" }],
+        ],
+      },
+    }
+  );
+
+  const confirmationResponse = await conversation.waitFor(
+    "callback_query:data"
+  );
+  const confirmation = confirmationResponse.callbackQuery?.data;
+
+  if (confirmation === "confirm") {
+    await ctx.reply("Новость отправлена!");
+
+    const users = await User.find({});
+
+    for (const user of users) {
+      await bot.api.sendMessage(user.userId, newsText);
+    }
   } else {
-    await ctx.reply("Ошибка: текст новости не найден.");
+    await ctx.reply("Отправка новости отменена.");
   }
-});
+}
 
-// переместись
+
 
 const menuKeyboard = new InlineKeyboard()
   .text("📊 Расписание на день", "cources-today")
