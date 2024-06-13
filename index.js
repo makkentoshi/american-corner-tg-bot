@@ -44,19 +44,23 @@ bot.use(async (ctx, next) => {
 bot.api.setMyCommands([
   {
     command: "start",
-    description: "Начать работу с ботом",
+    description: "🛠️ Начать работу с ботом",
   },
   {
     command: "help",
-    description: "Полезные команды бота",
+    description: "📎 Полезные команды бота",
   },
   {
-    command: "id",
-    description: "Информация о вашем ID",
+    command: "settings",
+    description: "⚙️ Настройки",
   },
   {
     command: "channel",
-    description: "Наш Telegram-канал",
+    description: "💼 Наш Telegram-канал",
+  },
+  {
+    command: "admin",
+    description: "😎 Админская панель",
   },
 ]);
 
@@ -196,7 +200,7 @@ bot.command("start", async (ctx) => {
     console.error(error);
   }
 
-  await ctx.reply("👋 Привет! Я American Corner бот", {
+  await ctx.reply("👋 Привет! Я American Corner Bot 🇺🇸", {
     parse_mode: "Markdown",
   });
 
@@ -214,14 +218,14 @@ bot.command("start", async (ctx) => {
 
   await new Promise((resolve) => setTimeout(resolve, 700));
   await ctx.reply(
-    "❓ Узнавай информацию про предстоящие курсы и волонтерство!",
+    "🫶 Узнавай информацию про предстоящие курсы и волонтерство!",
     {
       parse_mode: "Markdown",
     }
   );
   await new Promise((resolve) => setTimeout(resolve, 700));
   await ctx.reply(
-    "👀 Привет! Я American Corner Bot 🇺🇸\n📁 Я помогу тебе найти нужную информацию о ближайших курсах и новостях с уголка\nНажми на кнопку меню, чтобы продолжить взаимодействие с ботом 👇",
+    "🤓☝️ Я помогу тебе найти нужную информацию о ближайших курсах и новостях с уголка 👀\nНажми на кнопку меню, чтобы продолжить взаимодействие с ботом 👇",
 
     {
       reply_markup: permanentKeyboard,
@@ -422,8 +426,47 @@ async function sendNews(conversation, ctx) {
     await ctx.reply("Отправка новости отменена.");
   }
 }
+// Settings
 
+const settingsKeyboard = new InlineKeyboard()
+  .text("🔒 Информация о вашем ID", "id_info")
+  .row()
+  .text("🔙 Назад", "back");
 
+const backToMenu = new InlineKeyboard().text("🔙 Назад в меню", "back_to_menu");
+
+bot.command("settings", async (ctx) => {
+  await ctx.reply("Настройки", {
+    reply_markup: settingsKeyboard,
+  });
+});
+
+bot.callbackQuery("id_info", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  try {
+    const user = await User.findOne({ userId: ctx.from.id });
+    if (user) {
+      await ctx.editMessageText(`Ваш ID: ${user.userId}`, {
+        reply_markup: backToMenu,
+      });
+    } else {
+      await ctx.editMessageText("Вы не зарегистрированы.", {
+        reply_markup: backToMenu,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    await ctx.editMessageText("Ошибка получения ID.", {
+      reply_markup: backToMenu,
+    });
+  }
+});
+
+bot.callbackQuery("back_to_menu", async (ctx) => {
+  await ctx.editMessageText("👋 Выберите пункт меню : ", {
+    reply_markup: settingsKeyboard,
+  });
+});
 
 const menuKeyboard = new InlineKeyboard()
   .text("📊 Расписание на день", "cources-today")
@@ -448,7 +491,7 @@ bot.command("menu", async (ctx) => {
 
 bot.callbackQuery("faq", async (ctx) => {
   await ctx.answerCallbackQuery();
-  await ctx.editMessageText("Здесь будет информация для FAQ."); // Измените текст на нужный вам
+  await ctx.editMessageText("Здесь будет информация для FAQ.");
 });
 
 bot.callbackQuery("courses", async (ctx) => {
@@ -526,28 +569,8 @@ bot.command("help", async (ctx) => {
     return;
   }
   await ctx.reply(
-    "🤖 Команды и возможности бота : \n /channel - Telegram канал American Corner Pavlodar \n /id - ваш ID \n /menu - главное меню \n /start - начать бота \n /help - помощь"
+    "🤖 Команды и возможности бота : \n /start - начало работы с ботом \n /channel - Telegram канал American Corner Pavlodar \n /settings - настройки \n /menu - главное меню \n /help - помощь в навигации \n"
   );
-});
-bot.command("id", async (ctx) => {
-  if (
-    ctx.session.state &&
-    (ctx.session.state === "waiting_for_day" ||
-      ctx.session.state === "waiting_for_course")
-  ) {
-    return;
-  }
-  try {
-    const user = await User.findOne({ userId: ctx.from.id });
-    if (user) {
-      ctx.reply(`Ваш ID: ${user.userId}`);
-    } else {
-      ctx.reply("Вы не зарегистрированы.");
-    }
-  } catch (error) {
-    console.error(error);
-    ctx.reply("Ошибка получения ID.");
-  }
 });
 
 bot.command("channel", async (ctx) => {
