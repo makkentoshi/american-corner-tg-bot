@@ -315,7 +315,7 @@ async function createCourse(conversation, ctx) {
 
   const courseNameCtx = await conversation.waitFor("msg:text");
   const courseName = courseNameCtx.msg.text;
-  await ctx.reply("Введите время курса:");
+  await ctx.reply("Введите время курса (например 10:00-12:00) :");
 
   const courseTimeCtx = await conversation.waitFor("msg:text");
   const courseTime = courseTimeCtx.msg.text;
@@ -433,10 +433,10 @@ const settingsKeyboard = new InlineKeyboard()
   .text("🔒 Информация о вашем ID", "id_info")
   .row();
 
-const backToMenu = new InlineKeyboard().text("🔙 Назад в меню", "back_to_menu");
+const backToMenu = new InlineKeyboard().text("🔙 Меню", "back_to_menu");
 
 bot.command("settings", async (ctx) => {
-  await ctx.reply("⚙️ Настройки", {
+  await ctx.reply("⚙️ Настройки :", {
     reply_markup: settingsKeyboard,
   });
 });
@@ -463,10 +463,12 @@ bot.callbackQuery("id_info", async (ctx) => {
 });
 
 bot.callbackQuery("back_to_menu", async (ctx) => {
-  await ctx.editMessageText("👋 Выберите пункт меню : ", {
+  await ctx.editMessageText("⚙️ Настройки : ", {
     reply_markup: settingsKeyboard,
   });
 });
+
+//
 
 const menuKeyboard = new InlineKeyboard()
   .text("📊 Расписание на день", "cources-today")
@@ -539,9 +541,14 @@ bot.callbackQuery("cources-today", async (ctx) => {
     const currentDay = getCurrentDay();
     const todayCourses = await Course.find({ "dayschedule.day": currentDay });
 
-    const dayScheduleString = `📊 Расписание на ${currentDay}\n${todayCourses
-      .map((course) => `${course.title} (${course.dayschedule.time})`)
-      .join("\n")}`;
+    let dayScheduleString;
+    if (!todayCourses || todayCourses.length === 0) {
+      dayScheduleString = "📆 К сожалению, сегодня нет никаких курсов 💔";
+    } else {
+      dayScheduleString = `📊 Расписание на ${currentDay}\n${todayCourses
+        .map((course) => `${course.title} (${course.dayschedule.time})`)
+        .join("\n")}`;
+    }
 
     await ctx.callbackQuery.message.editText(dayScheduleString, {
       reply_markup: backKeyboard,
@@ -552,9 +559,6 @@ bot.callbackQuery("cources-today", async (ctx) => {
     await ctx.reply("Произошла ошибка при получении расписания на сегодня.");
   }
 });
-
-
-
 
 async function sendToAllUsers(bot) {
   try {
@@ -589,7 +593,6 @@ async function sendToAllUsers(bot) {
   }
 }
 
-
 cron.schedule(
   "0 10 * * *",
   () => {
@@ -601,7 +604,6 @@ cron.schedule(
     timezone: "Asia/Almaty",
   }
 );
-
 
 bot.callbackQuery("back", async (ctx) => {
   await ctx.callbackQuery.message.editText("👋 Выберите пункт меню : ", {
@@ -619,7 +621,7 @@ bot.command("help", async (ctx) => {
     return;
   }
   await ctx.reply(
-    "🤖 Команды и возможности бота : \n /start - начало работы с ботом \n /channel - Telegram канал American Corner Pavlodar \n /settings - настройки \n /menu - главное меню \n /help - помощь в навигации \n"
+    "🤖 Команды и возможности бота : \n /start - начало работы с ботом \n /channel - TG канал American Corner Pavlodar \n /settings - настройки \n /menu - главное меню \n /help - помощь в навигации \n"
   );
 });
 
