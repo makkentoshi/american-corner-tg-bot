@@ -591,9 +591,9 @@ async function sendToAllUsers(bot) {
 
 
 cron.schedule(
-  "0 11 * * *",
+  "0 10 * * *",
   () => {
-    console.log("3211", new Date());
+    console.log("Рассылка сделана", new Date());
     sendToAllUsers(bot);
   },
   {
