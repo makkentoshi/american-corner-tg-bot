@@ -518,7 +518,24 @@ function getCurrentDay() {
 
 bot.callbackQuery("schedule", async (ctx) => {
   try {
-    const courses = await Course.find({}).sort("dayschedule.day");
+    const courses = await Course.find({});
+
+    const daysOrder = [
+      "Понедельник",
+      "Вторник",
+      "Среда",
+      "Четверг",
+      "Пятница",
+      "Суббота",
+      "Воскресенье",
+    ];
+    courses.sort((a, b) => {
+      return (
+        daysOrder.indexOf(a.dayschedule.day) -
+        daysOrder.indexOf(b.dayschedule.day)
+      );
+    });
+
     const weekScheduleString = `🎒 Расписание на неделю\n${courses
       .map(
         (course) =>
@@ -539,7 +556,9 @@ bot.callbackQuery("schedule", async (ctx) => {
 bot.callbackQuery("cources-today", async (ctx) => {
   try {
     const currentDay = getCurrentDay();
-    const todayCourses = await Course.find({ "dayschedule.day": currentDay });
+    const todayCourses = await Course.find({
+      "dayschedule.day": currentDay,
+    }).sort("dayschedule.time");
 
     let dayScheduleString;
     if (!todayCourses || todayCourses.length === 0) {
