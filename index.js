@@ -3,6 +3,7 @@ require("./controllers/database.js");
 
 const Course = require("./models/course.js");
 const User = require("./models/user.js");
+const cron = require("node-cron");
 
 const punycode = require("punycode");
 
@@ -430,13 +431,12 @@ async function sendNews(conversation, ctx) {
 
 const settingsKeyboard = new InlineKeyboard()
   .text("🔒 Информация о вашем ID", "id_info")
-  .row()
-  .text("🔙 Назад", "back");
+  .row();
 
 const backToMenu = new InlineKeyboard().text("🔙 Назад в меню", "back_to_menu");
 
 bot.command("settings", async (ctx) => {
-  await ctx.reply("Настройки", {
+  await ctx.reply("⚙️ Настройки", {
     reply_markup: settingsKeyboard,
   });
 });
@@ -552,6 +552,84 @@ bot.callbackQuery("cources-today", async (ctx) => {
     await ctx.reply("Произошла ошибка при получении расписания на сегодня.");
   }
 });
+
+
+
+
+async function sendToAllUsers(bot) {
+  try {
+    const currentDay = getCurrentDay(); 
+    const todayCourses = await Course.find({ "dayschedule.day": currentDay });
+
+  
+
+    console.log("Сегодняшние курсы:", todayCourses);
+
+    const dayScheduleString = `📊 Расписание на ${currentDay}\n${todayCourses
+      .map((course) => {
+        console.log("Курс:", course);
+        return `${course.title} (${course.dayschedule.time})`;
+      })
+      .join("\n")}`;
+
+    const users = await User.find({});
+
+    for (const user of users) {
+      if (!todayCourses || todayCourses.length === 0) {
+        await bot.api.sendMessage(user.userId, "Сегодня нет курсов");
+        coursesToday = false;
+      }
+      if (user.userId && !coursesToday) {
+        await bot.api.sendMessage(user.userId, dayScheduleString);
+      } else {
+        console.error(`Пользователь с _id ${user._id} не имеет userId.`);
+      }
+    }
+  } catch (error) {
+    console.error("Ошибка при отправке расписания:", error);
+  }
+}
+
+
+// cron.schedule("* * * * *", () => {
+//   console.log("123", new Date());
+//   sendToAllUsers(bot);
+// })
+
+cron.schedule(
+  "0 8 * * *",
+  async () => {
+    try {
+      const currentDay = getCurrentDay();
+      const todayCourses = await Course.find({ "dayschedule.day": currentDay });
+
+      const dayScheduleString = `📊 Расписание на ${currentDay}\n${todayCourses
+        .map((course) => `${course.title} (${course.dayschedule.time})`)
+        .join("\n")}`;
+
+      await sendToAllUsers(dayScheduleString);
+    } catch (error) {
+      console.error("Ошибка при отправке расписания курсов:", error);
+    }
+  },
+  {
+    scheduled: true,
+    timezone: "Asia/Almaty",
+  }
+);
+
+
+
+cron.schedule(
+  "23 13 * * *",
+  () => {
+    console.log("321", new Date());
+  },
+  {
+    scheduled: true,
+    timezone: "Asia/Almaty",
+  }
+);
 
 bot.callbackQuery("back", async (ctx) => {
   await ctx.callbackQuery.message.editText("👋 Выберите пункт меню : ", {
