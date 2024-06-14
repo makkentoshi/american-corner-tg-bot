@@ -558,28 +558,27 @@ bot.callbackQuery("cources-today", async (ctx) => {
 
 async function sendToAllUsers(bot) {
   try {
-    const currentDay = getCurrentDay(); 
+    const currentDay = getCurrentDay();
     const todayCourses = await Course.find({ "dayschedule.day": currentDay });
-
-  
 
     console.log("Сегодняшние курсы:", todayCourses);
 
-    const dayScheduleString = `📊 Расписание на ${currentDay}\n${todayCourses
-      .map((course) => {
-        console.log("Курс:", course);
-        return `${course.title} (${course.dayschedule.time})`;
-      })
-      .join("\n")}`;
+    let dayScheduleString;
+    if (!todayCourses || todayCourses.length === 0) {
+      dayScheduleString = "📆 К сожалению, сегодня нет никаких курсов 💔";
+    } else {
+      dayScheduleString = `📊 Расписание на ${currentDay}\n${todayCourses
+        .map((course) => {
+          console.log("Курс:", course);
+          return `${course.title} (${course.dayschedule.time})`;
+        })
+        .join("\n")}`;
+    }
 
     const users = await User.find({});
 
     for (const user of users) {
-      if (!todayCourses || todayCourses.length === 0) {
-        await bot.api.sendMessage(user.userId, "Сегодня нет курсов");
-        coursesToday = false;
-      }
-      if (user.userId && !coursesToday) {
+      if (user.userId) {
         await bot.api.sendMessage(user.userId, dayScheduleString);
       } else {
         console.error(`Пользователь с _id ${user._id} не имеет userId.`);
@@ -591,45 +590,18 @@ async function sendToAllUsers(bot) {
 }
 
 
-// cron.schedule("* * * * *", () => {
-//   console.log("123", new Date());
-//   sendToAllUsers(bot);
-// })
-
 cron.schedule(
-  "0 8 * * *",
-  async () => {
-    try {
-      const currentDay = getCurrentDay();
-      const todayCourses = await Course.find({ "dayschedule.day": currentDay });
-
-      const dayScheduleString = `📊 Расписание на ${currentDay}\n${todayCourses
-        .map((course) => `${course.title} (${course.dayschedule.time})`)
-        .join("\n")}`;
-
-      await sendToAllUsers(dayScheduleString);
-    } catch (error) {
-      console.error("Ошибка при отправке расписания курсов:", error);
-    }
-  },
-  {
-    scheduled: true,
-    timezone: "Asia/Almaty",
-  }
-);
-
-
-
-cron.schedule(
-  "23 13 * * *",
+  "0 11 * * *",
   () => {
-    console.log("321", new Date());
+    console.log("3211", new Date());
+    sendToAllUsers(bot);
   },
   {
     scheduled: true,
     timezone: "Asia/Almaty",
   }
 );
+
 
 bot.callbackQuery("back", async (ctx) => {
   await ctx.callbackQuery.message.editText("👋 Выберите пункт меню : ", {
