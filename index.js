@@ -76,105 +76,6 @@ async function getAllUserIds() {
   }
 }
 
-const emojiArray = [
-  "✌",
-  "😂",
-  "😝",
-  "😁",
-  "😱",
-  "👉",
-  "🙌",
-  "🍻",
-  "🔥",
-  "🌈",
-  "☀",
-  "🎈",
-  "🌹",
-  "💄",
-  "🎀",
-  "⚽",
-  "🎾",
-  "🏁",
-  "😡",
-  "👿",
-  "🐻",
-  "🐶",
-  "🐬",
-  "🐟",
-  "🍀",
-  "👀",
-  "🚗",
-  "🍎",
-  "💝",
-  "💙",
-  "👌",
-  "❤",
-  "😍",
-  "😉",
-  "😓",
-  "😳",
-  "💪",
-  "💩",
-  "🍸",
-  "🔑",
-  "💖",
-  "🌟",
-  "🎉",
-  "🌺",
-  "🎶",
-  "👠",
-  "🏈",
-  "⚾",
-  "🏆",
-  "👽",
-  "💀",
-  "🐵",
-  "🐮",
-  "🐩",
-  "🐎",
-  "💣",
-  "👃",
-  "👂",
-  "🍓",
-  "💘",
-  "💜",
-  "👊",
-  "💋",
-  "😘",
-  "😜",
-  "😵",
-  "🙏",
-  "👋",
-  "🚽",
-  "💃",
-  "💎",
-  "🚀",
-  "🌙",
-  "🎁",
-  "⛄",
-  "🌊",
-  "⛵",
-  "🏀",
-  "🎱",
-  "💰",
-  "👶",
-  "👸",
-  "🐰",
-  "🐷",
-  "🐍",
-  "🐫",
-  "🔫",
-  "👄",
-  "🚲",
-  "🍉",
-  "💛",
-  "💚",
-];
-function getRandomElement(array) {
-  return array[Math.floor(Math.random() * array.length)];
-}
-const randomEmoji = getRandomElement(emojiArray);
-
 const permanentKeyboard = new Keyboard()
   .text("📃 Новости")
   .text("📢 Анонсы")
@@ -348,7 +249,9 @@ bot.callbackQuery("delete_course", async (ctx) => {
     const courses = await Course.find({});
     let deleteMessage = "Выберите номер курса для удаления:\n";
     courses.forEach((course, index) => {
-      deleteMessage += `${index + 1}. ${course.title} - ${course.day}\n`;
+      deleteMessage += `${index + 1}. ${course.title} - ${
+        course.dayschedule.day
+      } ( ${course.dayschedule.time} )\n`;
     });
     await ctx.reply(deleteMessage);
     await ctx.conversation.enter("deleteCourse");
@@ -367,12 +270,12 @@ async function deleteCourse(conversation, ctx) {
     const courses = await Course.find({});
 
     if (courseNumber > 0 && courseNumber <= courses.length) {
-      const deletedCourse = await Course.findByIdAndRemove(
+      const deletedCourse = await Course.findByIdAndDelete(
         courses[courseNumber - 1]._id
       );
 
       await ctx.reply(
-        `Курс "${deletedCourse.title}" для дня ${deletedCourse.day} успешно удален.`
+        `Курс "${deletedCourse.title}" для дня ${deletedCourse.dayschedule.day} успешно удален.`
       );
     } else {
       await ctx.reply(
@@ -508,6 +411,79 @@ function getCurrentDay() {
   return days[currentDay];
 }
 
+const emojiArray = [
+  "✌",
+  "😂",
+  "😝",
+  "😁",
+  "😱",
+  "👉",
+  "🙌",
+  "🔥",
+  "🌈",
+  "☀",
+  "🎈",
+  "🌹",
+  "🎀",
+  "⚽",
+  "🎾",
+  "🏁",
+  "😡",
+  "👿",
+  "🍀",
+  "👀",
+  "🚗",
+  "🍎",
+  "💝",
+  "💙",
+  "👌",
+  "❤",
+  "😍",
+  "😉",
+  "😓",
+  "😳",
+  "💪",
+  "🔑",
+  "💖",
+  "🌟",
+  "🎉",
+  "🌺",
+  "🎶",
+  "🏈",
+  "⚾",
+  "🏆",
+  "👽",
+  "💣",
+  "👂",
+  "🍓",
+  "💘",
+  "💜",
+  "👊",
+  "😘",
+  "😜",
+  "😵",
+  "🙏",
+  "👋",
+  "💃",
+  "💎",
+  "🚀",
+  "🌙",
+  "🎁",
+  "⛄",
+  "🌊",
+  "⛵",
+  "🏀",
+  "🎱",
+  "💰",
+  "🍉",
+  "💛",
+  "💚",
+];
+function getRandomElement(array) {
+  return array[Math.floor(Math.random() * array.length)];
+  return array.splice(index, 1)[0];
+}
+
 bot.callbackQuery("schedule", async (ctx) => {
   try {
     const courses = await Course.find({});
@@ -528,11 +504,11 @@ bot.callbackQuery("schedule", async (ctx) => {
       );
     });
 
-    const weekScheduleString = `🎒 Расписание на неделю\n${courses
-      .map(
-        (course) =>
-          `${course.dayschedule.day} - ${course.title} (${course.dayschedule.time})`
-      )
+    const weekScheduleString = `🎒 Расписание на неделю :\n${courses
+      .map((course) => {
+        const emoji = getRandomElement(emojiArray);
+        return `${emoji} ${course.dayschedule.day} - ${course.title} (${course.dayschedule.time})`;
+      })
       .join("\n")}`;
 
     await ctx.callbackQuery.message.editText(weekScheduleString, {
@@ -571,7 +547,7 @@ bot.callbackQuery("cources-today", async (ctx) => {
   }
 });
 
-async function sendToAllUsers(bot) {
+async function sendToAllUsersDaySchedule(bot) {
   try {
     const currentDay = getCurrentDay();
     const todayCourses = await Course.find({ "dayschedule.day": currentDay });
@@ -600,7 +576,53 @@ async function sendToAllUsers(bot) {
       }
     }
   } catch (error) {
-    console.error("Ошибка при отправке расписания:", error);
+    console.error("Ошибка при отправке расписания на день:", error);
+  }
+}
+
+async function sendToAllUsersWeekSchedule(bot) {
+  try {
+    try {
+      const courses = await Course.find({});
+
+      const daysOrder = [
+        "Понедельник",
+        "Вторник",
+        "Среда",
+        "Четверг",
+        "Пятница",
+        "Суббота",
+        "Воскресенье",
+      ];
+      courses.sort((a, b) => {
+        return (
+          daysOrder.indexOf(a.dayschedule.day) -
+          daysOrder.indexOf(b.dayschedule.day)
+        );
+      });
+
+      const weekScheduleString = `🎒 Расписание на неделю :\n${courses
+        .map((course) => {
+          const emoji = getRandomElement(emojiArray);
+          return `${emoji} ${course.dayschedule.day} - ${course.title} (${course.dayschedule.time})`;
+        })
+        .join("\n")}`;
+
+      const users = await User.find({});
+
+      for (const user of users) {
+        if (user.userId) {
+          await bot.api.sendMessage(user.userId, weekScheduleString);
+        } else {
+          console.error(`Пользователь с _id ${user._id} не имеет userId.`);
+        }
+      }
+    } catch (error) {
+      console.error("Ошибка при получении расписания курсов:", error);
+      await ctx.reply("Произошла ошибка при получении расписания.");
+    }
+  } catch (error) {
+    console.error("Ошибка при отправке расписания на неделю:", error);
   }
 }
 
@@ -608,13 +630,26 @@ cron.schedule(
   "0 10 * * *",
   () => {
     console.log("Рассылка сделана", new Date());
-    sendToAllUsers(bot);
+    sendToAllUsersDaySchedule(bot);
   },
   {
     scheduled: true,
     timezone: "Asia/Almaty",
   }
 );
+
+cron.schedule(
+  "0 10 */7 * *",
+  () => {
+    console.log("Рассылка сделана", new Date());
+    sendToAllUsersWeekSchedule(bot);
+  },
+  {
+    scheduled: true,
+    timezone: "Asia/Almaty",
+  }
+);
+
 
 bot.callbackQuery("back", async (ctx) => {
   await ctx.callbackQuery.message.editText("👋 Выберите пункт меню : ", {
