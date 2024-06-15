@@ -4,9 +4,7 @@ require("./controllers/database.js");
 const Course = require("./models/course.js");
 const User = require("./models/user.js");
 const cron = require("node-cron");
-
 const punycode = require("punycode");
-
 const {
   Bot,
   GrammyError,
@@ -16,9 +14,7 @@ const {
   session,
   Context,
 } = require("grammy");
-
 const { hydrate } = require("@grammyjs/hydrate");
-
 const {
   conversations,
   createConversation,
@@ -39,9 +35,7 @@ bot.use(async (ctx, next) => {
   }
   await next();
 });
-
 //
-
 bot.api.setMyCommands([
   {
     command: "start",
@@ -75,7 +69,6 @@ async function getAllUserIds() {
     throw error;
   }
 }
-
 const permanentKeyboard = new Keyboard()
   .text("📃 Новости")
   .text("📢 Анонсы")
@@ -88,7 +81,6 @@ const inlineKeyboardChannel = new InlineKeyboard().url(
   "Перейти в тг-канал",
   "https://t.me/ACnMS_PVL"
 );
-
 bot.command("start", async (ctx) => {
   try {
     const existingUser = await User.findOne({ userId: ctx.from.id });
@@ -134,9 +126,7 @@ bot.command("start", async (ctx) => {
     }
   );
 });
-
 ////
-
 bot.hears("📃 Новости", async (ctx) => {
   await ctx.reply("⚡ Читай актуальные новости в нашем Telegram-канале 👇", {
     reply_markup: inlineKeyboardChannel,
@@ -153,7 +143,7 @@ bot.hears("📢 Анонсы", async (ctx) => {
 });
 
 bot.hears("📕 Курсы", async (ctx) => {
-  await ctx.reply("👋 Выберите пункт меню : ", {
+  await ctx.reply("👋 Выберите пункт меню: ", {
     reply_markup: menuKeyboard,
   });
 });
@@ -174,7 +164,7 @@ bot.hears("❓ FAQ", async (ctx) => {
       "<i>A: Чтобы быть в курсе всех наших мероприятий и новостей, подписывайтесь на наши страницы в социальных сетях и посещайте наш сайт. Мы регулярно обновляем информацию о предстоящих событиях и программах.</i>",
     { parse_mode: "HTML" }
   );
-});
+}); 
 
 bot.command("admin", async (ctx) => {
   try {
@@ -216,7 +206,7 @@ async function createCourse(conversation, ctx) {
 
   const courseNameCtx = await conversation.waitFor("msg:text");
   const courseName = courseNameCtx.msg.text;
-  await ctx.reply("Введите время курса (например 10:00-12:00) :");
+  await ctx.reply("Введите время курса (например 10:00-12:00):");
 
   const courseTimeCtx = await conversation.waitFor("msg:text");
   const courseTime = courseTimeCtx.msg.text;
@@ -239,11 +229,8 @@ async function createCourse(conversation, ctx) {
     await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте снова.");
   }
 }
-
 //
-
 bot.use(createConversation(deleteCourse));
-
 bot.callbackQuery("delete_course", async (ctx) => {
   try {
     const courses = await Course.find({});
@@ -287,9 +274,7 @@ async function deleteCourse(conversation, ctx) {
     await ctx.reply("Произошла ошибка. Пожалуйста, попробуйте позже.");
   }
 }
-
 // Send News
-
 bot.use(createConversation(sendNews));
 
 bot.callbackQuery("send_news", async (ctx) => {
@@ -331,7 +316,6 @@ async function sendNews(conversation, ctx) {
   }
 }
 // Settings
-
 const settingsKeyboard = new InlineKeyboard()
   .text("🔒 Информация о вашем ID", "id_info")
   .row();
@@ -339,7 +323,7 @@ const settingsKeyboard = new InlineKeyboard()
 const backToMenu = new InlineKeyboard().text("🔙 Меню", "back_to_menu");
 
 bot.command("settings", async (ctx) => {
-  await ctx.reply("⚙️ Настройки :", {
+  await ctx.reply("⚙️ Настройки:", {
     reply_markup: settingsKeyboard,
   });
 });
@@ -366,22 +350,20 @@ bot.callbackQuery("id_info", async (ctx) => {
 });
 
 bot.callbackQuery("back_to_menu", async (ctx) => {
-  await ctx.editMessageText("⚙️ Настройки : ", {
+  await ctx.editMessageText("⚙️ Настройки: ", {
     reply_markup: settingsKeyboard,
   });
 });
-
 //
-
 const menuKeyboard = new InlineKeyboard()
-  .text("📊 Расписание на день", "cources-today")
+  .text("📊 Расписание на сегодняшний день", "cources-today")
   .row()
-  .text("📅 Расписание на неделю", "schedule");
+  .text("📅 Расписание на эту неделю", "schedule");
 
 const backKeyboard = new InlineKeyboard().text(" ⬅ Назад в меню", "back");
 
 bot.command("menu", async (ctx) => {
-  await ctx.reply("👋 Выберите пункт меню : ", {
+  await ctx.reply("👋 Выберите пункт меню: ", {
     reply_markup: menuKeyboard,
   });
 });
@@ -392,7 +374,7 @@ bot.callbackQuery("faq", async (ctx) => {
 });
 
 bot.callbackQuery("courses", async (ctx) => {
-  await ctx.reply("👋 Выберите пункт меню : ", {
+  await ctx.reply("👋 Выберите пункт меню: ", {
     reply_markup: menuKeyboard,
   });
 });
@@ -425,15 +407,38 @@ const emojiArray = [
   "🎈",
   "🌹",
   "🎀",
-  "⚽",
-  "🎾",
-  "🏁",
+  "📚",
+  "🎓",
+  "📖",
+  "📝",
+  "🔬",
+  "🧪",
+  "🧬",
+  "🖊️",
+  "🖋️",
+  "✏️",
+  "📐",
+  "📏",
+  "✂️",
+  "🗂️",
+  "📋",
+  "💼",
+  "👩‍🏫",
+  "👨‍🏫",
+  "👩‍🎓",
+  "👨‍🎓",
+  "🧠",
+  "💡",
+  "⏰",
+  "🔔",
+  "😄",
+  "😜",
+  "😂",
+  "🤣",
   "😡",
   "👿",
   "🍀",
   "👀",
-  "🚗",
-  "🍎",
   "💝",
   "💙",
   "👌",
@@ -443,21 +448,14 @@ const emojiArray = [
   "😓",
   "😳",
   "💪",
-  "🔑",
   "💖",
   "🌟",
   "🎉",
   "🌺",
   "🎶",
-  "🏈",
-  "⚾",
   "🏆",
   "👽",
-  "💣",
-  "👂",
-  "🍓",
   "💘",
-  "💜",
   "👊",
   "😘",
   "😜",
@@ -469,15 +467,8 @@ const emojiArray = [
   "🚀",
   "🌙",
   "🎁",
-  "⛄",
   "🌊",
-  "⛵",
-  "🏀",
-  "🎱",
   "💰",
-  "🍉",
-  "💛",
-  "💚",
 ];
 function getRandomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -601,7 +592,7 @@ async function sendToAllUsersWeekSchedule(bot) {
         );
       });
 
-      const weekScheduleString = `🎒 Расписание на неделю :\n${courses
+      const weekScheduleString = `🎒 Расписание на неделю:\n${courses
         .map((course) => {
           const emoji = getRandomElement(emojiArray);
           return `${emoji} ${course.dayschedule.day} - ${course.title} (${course.dayschedule.time})`;
@@ -625,7 +616,7 @@ async function sendToAllUsersWeekSchedule(bot) {
     console.error("Ошибка при отправке расписания на неделю:", error);
   }
 }
-
+// Newsletter
 cron.schedule(
   "0 10 * * *",
   () => {
@@ -649,10 +640,9 @@ cron.schedule(
     timezone: "Asia/Almaty",
   }
 );
-
-
+// 
 bot.callbackQuery("back", async (ctx) => {
-  await ctx.callbackQuery.message.editText("👋 Выберите пункт меню : ", {
+  await ctx.callbackQuery.message.editText("👋 Выберите пункт меню: ", {
     reply_markup: menuKeyboard,
   });
   await ctx.answerCallbackQuery();
@@ -674,7 +664,7 @@ bot.command("channel", async (ctx) => {
 });
 
 bot.on([":media", "::url"], async (ctx) => {
-  await ctx.reply("Got a URL");
+  await ctx.reply("Получена ссылка или изображение");
 });
 
 bot.catch((err) => {
@@ -683,9 +673,9 @@ bot.catch((err) => {
   const e = err.error;
 
   if (e instanceof GrammyError) {
-    console.error("Error in request : ", e.description);
+    console.error("Error in request:", e.description);
   } else if (e instanceof HttpError) {
-    console.error("Could not contact Telegram :", e);
+    console.error("Could not contact Telegram:", e);
   } else {
     console.error("Unknown error", e);
   }
