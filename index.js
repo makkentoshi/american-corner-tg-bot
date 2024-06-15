@@ -478,17 +478,9 @@ const menuKeyboard = new InlineKeyboard()
 const backKeyboard = new InlineKeyboard().text(" ⬅ Назад в меню", "back");
 
 bot.command("menu", async (ctx) => {
-  if (
-    ctx.session.state &&
-    (ctx.session.state === "waiting_for_day" ||
-      ctx.session.state === "waiting_for_course")
-  ) {
-    return;
-  } else {
-    await ctx.reply("👋 Выберите пункт меню : ", {
-      reply_markup: menuKeyboard,
-    });
-  }
+  await ctx.reply("👋 Выберите пункт меню : ", {
+    reply_markup: menuKeyboard,
+  });
 });
 
 bot.callbackQuery("faq", async (ctx) => {
@@ -632,27 +624,12 @@ bot.callbackQuery("back", async (ctx) => {
 });
 
 bot.command("help", async (ctx) => {
-  if (
-    ctx.session.state &&
-    (ctx.session.state === "waiting_for_day" ||
-      ctx.session.state === "waiting_for_course")
-  ) {
-    return;
-  }
   await ctx.reply(
     "🤖 Команды и возможности бота : \n /start - начало работы с ботом \n /channel - TG канал American Corner Pavlodar \n /settings - настройки \n /menu - главное меню \n /help - помощь в навигации \n"
   );
 });
 
 bot.command("channel", async (ctx) => {
-  if (
-    ctx.session.state &&
-    (ctx.session.state === "waiting_for_day" ||
-      ctx.session.state === "waiting_for_course")
-  ) {
-    return;
-  }
-
   await ctx.reply(
     "🔗 Телеграм канал American Corner Pavlodar, где вы сможете оставаться в курсе всех событий! 👇",
     {
