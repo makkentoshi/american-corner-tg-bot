@@ -284,25 +284,31 @@ bot.callbackQuery("send_news", async (ctx) => {
 
 async function sendNews(conversation, ctx) {
   try {
-    await ctx.reply("✍️ У вас есть картинка в тексте новости? Введите 1, если да, или 2, если нет:");
+    await ctx.reply(
+      "✍️ У вас есть картинка в тексте новости? Введите 1, если да, или 2, если нет:"
+    );
     const imageChoiceResponse = await conversation.wait();
     const imageChoice = imageChoiceResponse.message?.text;
 
     let photoIds = [];
 
     if (imageChoice === "1") {
-      await ctx.reply("🤗 Пожалуйста, отправьте все изображения новости. Когда закончите, введите 'готово'.");
+      await ctx.reply(
+        "🤗 Пожалуйста, отправьте все изображения новости. Когда закончите, введите 'готово'."
+      );
 
       while (true) {
         const imageResponse = await conversation.wait();
-        if (imageResponse.message?.text?.toLowerCase() === 'готово') break;
+        if (imageResponse.message?.text?.toLowerCase() === "готово") break;
 
         const photo = imageResponse.message?.photo;
         if (photo && photo.length > 0) {
           const photoId = photo[photo.length - 1].file_id;
           photoIds.push(photoId);
         } else {
-          await ctx.reply("🤗 Пожалуйста, отправьте изображение или введите 'готово', если вы закончили отправку изображений.");
+          await ctx.reply(
+            "🤗 Пожалуйста, отправьте изображение или введите 'готово', если вы закончили отправку изображений."
+          );
         }
       }
     } else if (imageChoice !== "2") {
@@ -320,8 +326,8 @@ async function sendNews(conversation, ctx) {
     }
 
     if (photoIds.length > 0) {
-      const media = photoIds.map(photoId => ({
-        type: 'photo',
+      const media = photoIds.map((photoId) => ({
+        type: "photo",
         media: photoId,
       }));
 
@@ -356,8 +362,8 @@ async function sendNews(conversation, ctx) {
       for (const user of users) {
         try {
           if (photoIds.length > 0) {
-            const media = photoIds.map(photoId => ({
-              type: 'photo',
+            const media = photoIds.map((photoId) => ({
+              type: "photo",
               media: photoId,
             }));
             media[0].caption = newsText;
@@ -374,7 +380,9 @@ async function sendNews(conversation, ctx) {
     }
   } catch (error) {
     console.error("Error while handling update", error);
-    await ctx.reply("⚠️ Произошла ошибка при обработке вашего запроса. Возможно, кто-то заблокировал бота, поэтому ему не была отправлена рассылка. Остальным людям рассылка была успешно совершена.");
+    await ctx.reply(
+      "⚠️ Произошла ошибка при обработке вашего запроса. Возможно, кто-то заблокировал бота, поэтому ему не была отправлена рассылка. Остальным людям рассылка была успешно совершена."
+    );
   }
 }
 
@@ -725,7 +733,6 @@ bot.command("channel", async (ctx) => {
     }
   );
 });
-
 
 bot.catch((err) => {
   const ctx = err.ctx;
