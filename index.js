@@ -26,11 +26,11 @@ bot.use(session({ initial: () => ({ newsText: null }) }));
 bot.use(hydrate());
 bot.use(conversations());
 
-const adminId = process.env.DEV_ADMIN_TOKEN;
+const adminIds = process.env.DEV_ADMIN_TOKENS.split(",");
 
 // Check if user is Admin
 bot.use(async (ctx, next) => {
-  if (ctx.from.id === adminId) {
+  if (adminIds.includes(String(ctx.from.id))) {
     ctx.isAdmin = true;
   }
   await next();
@@ -164,7 +164,7 @@ bot.hears("❓ FAQ", async (ctx) => {
       "<i>A: Чтобы быть в курсе всех наших мероприятий и новостей, подписывайтесь на наши страницы в социальных сетях и посещайте наш сайт. Мы регулярно обновляем информацию о предстоящих событиях и программах.</i>",
     { parse_mode: "HTML" }
   );
-}); 
+});
 
 bot.command("admin", async (ctx) => {
   try {
@@ -640,7 +640,7 @@ cron.schedule(
     timezone: "Asia/Almaty",
   }
 );
-// 
+//
 bot.callbackQuery("back", async (ctx) => {
   await ctx.callbackQuery.message.editText("👋 Выберите пункт меню: ", {
     reply_markup: menuKeyboard,
