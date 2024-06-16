@@ -206,7 +206,7 @@ async function createCourse(conversation, ctx) {
 
   const courseNameCtx = await conversation.waitFor("msg:text");
   const courseName = courseNameCtx.msg.text;
-  await ctx.reply("Введите время курса (например 10:00-12:00):");
+  await ctx.reply("Введите время начала и конца курса, например 10:00-12:00:");
 
   const courseTimeCtx = await conversation.waitFor("msg:text");
   const courseTime = courseTimeCtx.msg.text;
@@ -275,6 +275,7 @@ async function deleteCourse(conversation, ctx) {
   }
 }
 // Send News
+
 bot.use(createConversation(sendNews));
 
 bot.callbackQuery("send_news", async (ctx) => {
@@ -282,39 +283,101 @@ bot.callbackQuery("send_news", async (ctx) => {
 });
 
 async function sendNews(conversation, ctx) {
-  await ctx.reply("Пожалуйста, введите текст новости:");
-  const textResponse = await conversation.wait();
-  const newsText = textResponse.message?.text;
+  try {
+    await ctx.reply("✍️ У вас есть картинка в тексте новости? Введите 1, если да, или 2, если нет:");
+    const imageChoiceResponse = await conversation.wait();
+    const imageChoice = imageChoiceResponse.message?.text;
 
-  await ctx.reply(
-    `Вы уверены, что хотите опубликовать следующий текст?\n"${newsText}"`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "✅ Да", callback_data: "confirm" }],
-          [{ text: "❌ Нет", callback_data: "cancel" }],
-        ],
-      },
+    let photoIds = [];
+
+    if (imageChoice === "1") {
+      await ctx.reply("🤗 Пожалуйста, отправьте все изображения новости. Когда закончите, введите 'готово'.");
+
+      while (true) {
+        const imageResponse = await conversation.wait();
+        if (imageResponse.message?.text?.toLowerCase() === 'готово') break;
+
+        const photo = imageResponse.message?.photo;
+        if (photo && photo.length > 0) {
+          const photoId = photo[photo.length - 1].file_id;
+          photoIds.push(photoId);
+        } else {
+          await ctx.reply("🤗 Пожалуйста, отправьте изображение или введите 'готово', если вы закончили отправку изображений.");
+        }
+      }
+    } else if (imageChoice !== "2") {
+      await ctx.reply("🚫 Некорректный выбор. Отмена операции.");
+      return;
     }
-  );
 
-  const confirmationResponse = await conversation.waitFor(
-    "callback_query:data"
-  );
-  const confirmation = confirmationResponse.callbackQuery?.data;
+    await ctx.reply("✍️ Пожалуйста, отправьте текст новости:");
+    const textResponse = await conversation.wait();
+    const newsText = textResponse.message?.text;
 
-  if (confirmation === "confirm") {
-    await ctx.reply("Новость отправлена!");
-
-    const users = await User.find({});
-
-    for (const user of users) {
-      await bot.api.sendMessage(user.userId, newsText);
+    if (!newsText) {
+      await ctx.reply("⛔️ Текст новости не был отправлен. Отмена операции.");
+      return;
     }
-  } else {
-    await ctx.reply("Отправка новости отменена.");
+
+    if (photoIds.length > 0) {
+      const media = photoIds.map(photoId => ({
+        type: 'photo',
+        media: photoId,
+      }));
+
+      media[0].caption = newsText;
+      await bot.api.sendMediaGroup(ctx.chat.id, media);
+    } else {
+      await ctx.reply(newsText);
+    }
+
+    await ctx.reply(
+      `Вы уверены, что хотите опубликовать следующий текст и фотографии (если есть)?`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "✅ Да", callback_data: "confirm" }],
+            [{ text: "❌ Нет", callback_data: "cancel" }],
+          ],
+        },
+      }
+    );
+
+    const confirmationResponse = await conversation.waitFor(
+      "callback_query:data"
+    );
+    const confirmation = confirmationResponse.callbackQuery?.data;
+
+    if (confirmation === "confirm") {
+      await ctx.reply("✅ Новость отправлена!");
+
+      const users = await User.find({});
+
+      for (const user of users) {
+        try {
+          if (photoIds.length > 0) {
+            const media = photoIds.map(photoId => ({
+              type: 'photo',
+              media: photoId,
+            }));
+            media[0].caption = newsText;
+            await bot.api.sendMediaGroup(user.userId, media);
+          } else {
+            await bot.api.sendMessage(user.userId, newsText);
+          }
+        } catch (error) {
+          console.error(`Error sending message to user ${user.userId}`, error);
+        }
+      }
+    } else {
+      await ctx.reply("🚫 Отправка новости отменена.");
+    }
+  } catch (error) {
+    console.error("Error while handling update", error);
+    await ctx.reply("⚠️ Произошла ошибка при обработке вашего запроса. Возможно, кто-то заблокировал бота, поэтому ему не была отправлена рассылка. Остальным людям рассылка была успешно совершена.");
   }
 }
+
 // Settings
 const settingsKeyboard = new InlineKeyboard()
   .text("🔒 Информация о вашем ID", "id_info")
@@ -663,9 +726,6 @@ bot.command("channel", async (ctx) => {
   );
 });
 
-bot.on([":media", "::url"], async (ctx) => {
-  await ctx.reply("Получена ссылка или изображение");
-});
 
 bot.catch((err) => {
   const ctx = err.ctx;
