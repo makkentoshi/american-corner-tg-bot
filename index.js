@@ -427,7 +427,7 @@ bot.callbackQuery("back_to_menu", async (ctx) => {
 });
 //
 const menuKeyboard = new InlineKeyboard()
-  .text("📊 Расписание на сегодняшний день", "cources-today")
+  .text("📊  Расписание на сегодняшний день", "cources-today")
   .row()
   .text("📅 Расписание на эту неделю", "schedule");
 
